@@ -7,6 +7,7 @@ import {
 import { stripTerminalSequences } from "@earendil-works/pi-tui";
 import { Value } from "typebox/value";
 import { beforeAll, describe, expect, test, vi } from "vite-plus/test";
+import packageJson from "../package.json" with { type: "json" };
 import exaWebExtension, * as publicModule from "../src/index.ts";
 import { registerExaWebTools, type ExaWebClient } from "../src/register-tools.ts";
 
@@ -125,7 +126,16 @@ function renderResult(
 }
 
 describe("pi-exa-web extension contract", () => {
-  test("exports only the default Pi extension and registers two web tools plus shutdown", () => {
+  test("publishes the TypeScript source as the Pi extension entry", () => {
+    expect(packageJson.files).toEqual(["src"]);
+    expect(packageJson.pi.extensions).toEqual(["./src/index.ts"]);
+    expect(packageJson).not.toHaveProperty("exports");
+    expect(packageJson.scripts).not.toHaveProperty("build");
+    expect(packageJson.scripts).not.toHaveProperty("dev");
+    expect(packageJson.scripts.prepublishOnly).toBe("vp run check && vp run test");
+  });
+
+  test("source entry exports only the default Pi extension and registers two web tools plus shutdown", () => {
     const { tools, handlers } = captureExtension(exaWebExtension);
 
     expect(Object.keys(publicModule)).toEqual(["default"]);

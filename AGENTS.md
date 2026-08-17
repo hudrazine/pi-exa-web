@@ -4,15 +4,16 @@ Guidance for AI coding agents working in this repository.
 
 ## Commands
 
-This project uses Vite+, a unified toolchain with the global CLI `vp` (distinct from Vite; use `vp dev` / `vp build`). `vp <name>` runs a built-in; `vp run <name>` runs a `package.json` script or `vite.config.ts` task—scripts cannot overwrite built-ins, so check those files first. Docs: `node_modules/vite-plus/docs` or https://viteplus.dev/guide/.
+This project uses Vite+, a unified toolchain with the global CLI `vp`. `vp <name>` runs a built-in; `vp run <name>` runs a `package.json` script or `vite.config.ts` task—scripts cannot overwrite built-ins, so check those files first. Docs: `node_modules/vite-plus/docs` or https://viteplus.dev/guide/.
 
 - `vp help` / `vp <command> --help`: list commands and show command help
 - `vp install`: after pulling remote changes and before starting work
 - `vp run check`: format, lint, and typecheck changes (`--fix` applies auto-fixes)
 - `vp run test`: test code
-- `vp run build`: build code
 - `vp run <script>`: run other project scripts or Vite Task entries needed for validation
 - `vp env doctor`: when setup, runtime, or package-manager behavior looks wrong; include its output when asking for help
+
+Pi loads the TypeScript Extension source through jiti, so this package has no build step or generated distribution artifact.
 
 ## Git
 

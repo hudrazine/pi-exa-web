@@ -20,22 +20,16 @@
     "url": "git+https://github.com/hudrazine/pi-exa-web.git"
   },
   "files": [
-    "dist"
+    "src"
   ],
   "type": "module",
-  "exports": {
-    ".": "./dist/index.mjs",
-    "./package.json": "./package.json"
-  },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "vp pack",
-    "dev": "vp pack --watch",
     "test": "vp test",
     "check": "vp check",
-    "prepublishOnly": "vp run build"
+    "prepublishOnly": "vp run check && vp run test"
   },
   "dependencies": {
     "@modelcontextprotocol/client": "^2.0.0"
@@ -72,7 +66,7 @@
   },
   "pi": {
     "extensions": [
-      "./dist/index.mjs"
+      "./src/index.ts"
     ]
   }
 }
