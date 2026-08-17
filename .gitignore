@@ -1,3 +1,14 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
 # Logs
 logs
 *.log
@@ -122,8 +133,26 @@ dist
 # TernJS port file
 .tern-port
 
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+\#*\#
+.#*
+
+# VSCode
+!.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
+
+# Generic editor temp files
+*.bak
+*.tmp
 
 # pnpm
 .pnpm-store
@@ -141,3 +170,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Notes
+.notes/
+.memories/
