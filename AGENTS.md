@@ -26,3 +26,10 @@ This project uses Vite+, a unified toolchain with the global CLI `vp` (distinct 
 - Keep issues and pull requests concise and searchable.
 - Briefly summarize the main changes in PR descriptions and include the reason when useful.
 - Add issue references, test notes, and breaking-change notes only when relevant.
+
+## Documentation sources
+
+When using Context7 `query-docs`, use:
+
+- Pi: `/websites/pi_dev` or `/earendil-works/pi`
+- MCP TypeScript SDK: `/modelcontextprotocol/typescript-sdk`

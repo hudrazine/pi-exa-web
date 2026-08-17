@@ -23,3 +23,6 @@ strictSsl: true
 # Dependency lifecycle scripts require an explicit allowlist entry.
 strictDepBuilds: true
 dangerouslyAllowAllBuilds: false
+allowBuilds:
+  "@google/genai": false
+  protobufjs: false
