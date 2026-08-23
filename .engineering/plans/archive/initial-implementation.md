@@ -75,4 +75,4 @@ Implement and locally verify a Pi Package that follows the accepted [Exa Web Ext
 
 ## Release Handoff
 
-The implementation closed after local package verification. Versioning, final package inspection, npm publication, and registry installation moved to the active [Initial Release Plan](../active/initial-release.md).
+The implementation closed after local package verification. Versioning, final package inspection, npm publication, and registry installation were completed under the archived [Initial Release Plan](initial-release.md).
