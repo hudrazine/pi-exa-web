@@ -1,0 +1,87 @@
+name: Publish 0.1.0
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+env:
+  EXPECTED_VERSION: 0.1.0
+
+jobs:
+  verify:
+    name: Verify release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Require main branch
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "Publish must run from main; received ${GITHUB_REF}." >&2
+          exit 1
+
+      - name: Set up Vite+ and install dependencies
+        uses: voidzero-dev/setup-vp@v1.17.0
+        with:
+          version-file: package.json
+          node-version-file: package.json
+          run-install: |
+            - args: ["--frozen-lockfile"]
+          cache: false
+
+      - name: Require release version
+        run: |
+          actual_version=$(node -p "require('./package.json').version")
+          if [ "$actual_version" != "$EXPECTED_VERSION" ]; then
+            echo "Expected package version ${EXPECTED_VERSION}; received ${actual_version}." >&2
+            exit 1
+          fi
+
+      - name: Check package
+        run: vp run check
+
+      - name: Test package
+        run: vp run test
+
+      - name: Inspect publish files
+        run: vp pm pack -- --dry-run --json
+
+  publish:
+    name: Publish to npm
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: npm-production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Vite+ and install dependencies
+        uses: voidzero-dev/setup-vp@v1.17.0
+        with:
+          version-file: package.json
+          node-version-file: package.json
+          run-install: |
+            - args: ["--frozen-lockfile"]
+          cache: false
+          registry-url: https://registry.npmjs.org
+
+      - name: Publish package
+        run: vp pm publish --access public --tag latest --no-git-checks

@@ -7,6 +7,11 @@
 ## Active Plans
 
 - [Initial Release Plan](plans/active/initial-release.md)
+- [Changesets Release Automation Plan](plans/active/changesets-release-automation.md)
+
+## Development
+
+- [npm Release Procedure](development/releases.md)
 
 ## Archived Plans
 
