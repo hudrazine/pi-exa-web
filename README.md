@@ -1,15 +1,15 @@
-# pi-exa-web
+# @hudrazine/pi-exa-web
 
 Web search and page fetching for [Pi](https://pi.dev), powered by [Exa](https://exa.ai/).
 
-`pi-exa-web` adds two Pi-native tools backed by Exa Hosted MCP. It works without an API key and can use `EXA_API_KEY` when the anonymous rate limit is reached.
+`@hudrazine/pi-exa-web` adds two Pi-native tools backed by Exa Hosted MCP. It works without an API key and can use `EXA_API_KEY` when the anonymous rate limit is reached.
 
 ## Installation
 
 Install the package through Pi:
 
 ```sh
-pi install npm:pi-exa-web
+pi install npm:@hudrazine/pi-exa-web
 ```
 
 The package requires Node.js 22.19.0 or later.
@@ -85,7 +85,7 @@ Make sure the variable is set in the same environment that starts Pi, then start
 
 ### The tools do not appear
 
-Confirm that `pi-exa-web` is installed, then start a new Pi session. The extension registers `web_search` and `web_fetch` when Pi loads it.
+Confirm that `@hudrazine/pi-exa-web` is installed, then start a new Pi session. The extension registers `web_search` and `web_fetch` when Pi loads it.
 
 ### Pi reports an unsupported Node.js version
 

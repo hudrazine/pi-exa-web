@@ -7,7 +7,7 @@ status: active
 
 ## Goal
 
-After `pi-exa-web@0.1.0` is published and verified, use Changesets to maintain versions and `CHANGELOG.md`, create a reviewable release pull request, and automate trusted npm publication, Git tags, and GitHub Releases behind the existing `npm-production` approval.
+After `@hudrazine/pi-exa-web@0.1.0` is published and verified, use Changesets to maintain versions and `CHANGELOG.md`, create a reviewable release pull request, and automate trusted npm publication, Git tags, and GitHub Releases behind the existing `npm-production` approval.
 
 ## Current State
 
@@ -16,7 +16,7 @@ After `pi-exa-web@0.1.0` is published and verified, use Changesets to maintain v
 - Its `EXPECTED_VERSION: 0.1.0` check is a one-time safety guard, not a value to update for later releases.
 - The package has no Changesets configuration or dependency and no `CHANGELOG.md`.
 - `bumpp` is present as an unused development dependency.
-- npm Trusted Publisher and GitHub Environment setup cannot be completed until the preview package exists.
+- npm Trusted Publisher and GitHub Environment setup cannot be completed until the scoped preview package exists.
 
 ## Proposed Changes
 
