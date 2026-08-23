@@ -1,6 +1,6 @@
 {
   "name": "@hudrazine/pi-exa-web",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Exa-powered web search and page fetching tools for Pi.",
   "keywords": [
     "exa",

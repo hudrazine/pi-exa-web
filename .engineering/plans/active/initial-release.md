@@ -14,7 +14,7 @@ Publish and verify `@hudrazine/pi-exa-web@0.0.1` under the `preview` dist-tag, d
 - The accepted [Exa Web Extension design](../../design/exa-web-extension.md) is implemented and locally verified.
 - The [initial implementation plan](../archive/initial-implementation.md) is complete and archived.
 - The public README documents installation, tool inputs, authentication behavior, limits, troubleshooting, and development.
-- `package.json` declares the permanent npm name `@hudrazine/pi-exa-web` and bootstrap preview version `0.0.1`.
+- `package.json` declares the permanent npm name `@hudrazine/pi-exa-web` and formal release version `0.1.0`.
 - The repository contains a dedicated `0.1.0` publish workflow that separates verification from the approval-gated OIDC publish job.
 - The [npm release procedure](../../development/releases.md) owns the exact local and external steps.
 - Changesets is intentionally deferred to the separate [release automation plan](changesets-release-automation.md) after `0.1.0`.
@@ -23,6 +23,8 @@ Publish and verify `@hudrazine/pi-exa-web@0.0.1` under the `preview` dist-tag, d
 - `@hudrazine/pi-exa-web@0.0.1` is published and verified from the npm registry. Its seven-file tarball has the expected metadata, and its LICENSE and four source files match the verified unscoped artifact byte for byte, so the accepted name-only migration reuses the completed Pi smoke-test evidence.
 - The scoped `preview` and temporary bootstrap `latest` tags both resolve to `0.0.1`. The formal `0.1.0` release will move `latest`.
 - The unscoped `pi-exa-web@0.0.1` remains as migration evidence and is deprecated with `Moved to @hudrazine/pi-exa-web`.
+- The GitHub `npm-production` Environment requires review by `hudrazine`, permits self-review, accepts only `main`, and contains no secrets.
+- npm Trusted Publisher is configured for `@hudrazine/pi-exa-web`, repository `hudrazine/pi-exa-web`, workflow `publish.yml`, Environment `npm-production`, and `npm publish` permission.
 
 ## Proposed Changes
 
@@ -38,8 +40,8 @@ Publish the verified contents as `@hudrazine/pi-exa-web@0.0.1`, inspect the immu
 6. [x] Rename the npm package to `@hudrazine/pi-exa-web`, update current documentation, and repeat the repository checks and dry-run package inspection.
 7. [x] Publish `@hudrazine/pi-exa-web@0.0.1` under `preview`, inspect the scoped registry artifact, and confirm that its source files match the verified unscoped artifact without repeating the Pi smoke test.
 8. [x] Deprecate the unscoped `pi-exa-web` package with a message directing users to `@hudrazine/pi-exa-web`.
-9. [ ] Create the `npm-production` GitHub Environment with one required reviewer and a `main` deployment restriction.
-10. [ ] Configure npm Trusted Publisher for `@hudrazine/pi-exa-web`, `hudrazine/pi-exa-web`, `publish.yml`, `npm-production`, and `npm publish`; do not configure a publish token.
+9. [x] Create the `npm-production` GitHub Environment with one required reviewer and a `main` deployment restriction.
+10. [x] Configure npm Trusted Publisher for `@hudrazine/pi-exa-web`, `hudrazine/pi-exa-web`, `publish.yml`, `npm-production`, and `npm publish`; do not configure a publish token.
 11. [ ] Set `package.json` to `0.1.0`, repeat the local release gates, and merge the release files to `main`.
 12. [ ] Dispatch `publish.yml` from `main`, inspect the successful verification evidence, approve `npm-production`, and confirm OIDC publication under `latest`.
 13. [ ] Install `@hudrazine/pi-exa-web@0.1.0` from npm and complete one bounded anonymous call with each tool.
