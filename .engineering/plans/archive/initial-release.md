@@ -1,6 +1,6 @@
 ---
 type: plan
-status: active
+status: archived
 ---
 
 # Initial Release Plan
@@ -9,24 +9,27 @@ status: active
 
 Publish and verify `@hudrazine/pi-exa-web@0.0.1` under the `preview` dist-tag, deprecate the unscoped preview with a migration message, then publish `0.1.0` through npm Trusted Publisher after one GitHub Environment approval.
 
-## Current State
+## Completed State
 
 - The accepted [Exa Web Extension design](../../design/exa-web-extension.md) is implemented and locally verified.
-- The [initial implementation plan](../archive/initial-implementation.md) is complete and archived.
+- The [initial implementation plan](initial-implementation.md) is complete and archived.
 - The public README documents installation, tool inputs, authentication behavior, limits, troubleshooting, and development.
 - `package.json` declares the permanent npm name `@hudrazine/pi-exa-web` and formal release version `0.1.0`.
 - The repository contains a dedicated `0.1.0` publish workflow that separates verification from the approval-gated OIDC publish job.
 - The [npm release procedure](../../development/releases.md) owns the exact local and external steps.
-- Changesets is intentionally deferred to the separate [release automation plan](changesets-release-automation.md) after `0.1.0`.
+- Changesets is intentionally deferred to the separate [release automation plan](../active/changesets-release-automation.md) after `0.1.0`.
 - The final `0.0.1` repository files pass format, lint, typecheck, all 36 tests, and dry-run package inspection.
 - `pi-exa-web@0.0.1` is published and verified from the npm registry. The registry tarball matches the intended seven-file set, and both bounded Pi tool calls succeeded through the anonymous route.
 - `@hudrazine/pi-exa-web@0.0.1` is published and verified from the npm registry. Its seven-file tarball has the expected metadata, and its LICENSE and four source files match the verified unscoped artifact byte for byte, so the accepted name-only migration reuses the completed Pi smoke-test evidence.
-- The scoped `preview` and temporary bootstrap `latest` tags both resolve to `0.0.1`. The formal `0.1.0` release will move `latest`.
+- The scoped `preview` tag resolves to `0.0.1`, and `latest` resolves to the formal `0.1.0` release.
 - The unscoped `pi-exa-web@0.0.1` remains as migration evidence and is deprecated with `Moved to @hudrazine/pi-exa-web`.
 - The GitHub `npm-production` Environment requires review by `hudrazine`, permits self-review, accepts only `main`, and contains no secrets.
 - npm Trusted Publisher is configured for `@hudrazine/pi-exa-web`, repository `hudrazine/pi-exa-web`, workflow `publish.yml`, Environment `npm-production`, and `npm publish` permission.
+- `@hudrazine/pi-exa-web@0.1.0` was published from commit `ff3cdc73c3cf20b2c88bca1b2eaacb0a4b868563` through the approval-gated OIDC workflow. Its seven-file artifact matches that commit and carries npm provenance.
+- A clean registry installation completed one bounded anonymous call with each Pi tool, and Git tag and GitHub Release `v0.1.0` target the publication commit.
+- npm publishing access requires 2FA and disallows bypass-2FA tokens. GitHub Actions and the `npm-production` Environment contain no secrets.
 
-## Proposed Changes
+## Completed Approach
 
 Publish the verified contents as `@hudrazine/pi-exa-web@0.0.1`, inspect the immutable scoped artifact, and deprecate the unscoped package with the supported replacement. Then publish `0.1.0` from `main` through the `publish.yml` workflow, with automated release gates followed by one required `npm-production` approval. Do not use a long-lived npm publish token.
 
@@ -42,11 +45,11 @@ Publish the verified contents as `@hudrazine/pi-exa-web@0.0.1`, inspect the immu
 8. [x] Deprecate the unscoped `pi-exa-web` package with a message directing users to `@hudrazine/pi-exa-web`.
 9. [x] Create the `npm-production` GitHub Environment with one required reviewer and a `main` deployment restriction.
 10. [x] Configure npm Trusted Publisher for `@hudrazine/pi-exa-web`, `hudrazine/pi-exa-web`, `publish.yml`, `npm-production`, and `npm publish`; do not configure a publish token.
-11. [ ] Set `package.json` to `0.1.0`, repeat the local release gates, and merge the release files to `main`.
-12. [ ] Dispatch `publish.yml` from `main`, inspect the successful verification evidence, approve `npm-production`, and confirm OIDC publication under `latest`.
-13. [ ] Install `@hudrazine/pi-exa-web@0.1.0` from npm and complete one bounded anonymous call with each tool.
-14. [ ] Create the `v0.1.0` Git tag and GitHub Release, require 2FA while disallowing traditional npm tokens, and reconcile the published result with the README and active design.
-15. [ ] Move this plan to `plans/archive/` with `status: archived` and update the engineering index. Leave the Changesets plan active for the next release.
+11. [x] Set `package.json` to `0.1.0`, repeat the local release gates, and merge the release files to `main`.
+12. [x] Dispatch `publish.yml` from `main`, inspect the successful verification evidence, approve `npm-production`, and confirm OIDC publication under `latest`.
+13. [x] Install `@hudrazine/pi-exa-web@0.1.0` from npm and complete one bounded anonymous call with each tool.
+14. [x] Create the `v0.1.0` Git tag and GitHub Release, require 2FA while disallowing bypass-2FA tokens, and reconcile the published result with the README and active design.
+15. [x] Move this plan to `plans/archive/` with `status: archived` and update the engineering index. Leave the Changesets plan active for the next release.
 
 ## Completion Criteria
 
@@ -56,4 +59,4 @@ Publish the verified contents as `@hudrazine/pi-exa-web@0.0.1`, inspect the immu
 - `pi install npm:@hudrazine/pi-exa-web@0.1.0` installs a package that registers only `web_search` and `web_fetch`.
 - Both tools complete one bounded anonymous call against Exa Hosted MCP from the registry-installed package.
 - Checks, tests, package inspection, registry installation, and the active documentation all agree with the released package.
-- The initial release plan is archived after verification; Changesets automation remains separate follow-up work.
+- This initial release plan is archived after verification; Changesets automation remains separate follow-up work.

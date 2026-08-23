@@ -6,7 +6,6 @@
 
 ## Active Plans
 
-- [Initial Release Plan](plans/active/initial-release.md)
 - [Changesets Release Automation Plan](plans/active/changesets-release-automation.md)
 
 ## Development
@@ -16,3 +15,4 @@
 ## Archived Plans
 
 - [Initial Implementation Plan](plans/archive/initial-implementation.md)
+- [Initial Release Plan](plans/archive/initial-release.md)

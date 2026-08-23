@@ -11,12 +11,13 @@ After `@hudrazine/pi-exa-web@0.1.0` is published and verified, use Changesets to
 
 ## Current State
 
-- The initial release remains in progress under the [Initial Release Plan](initial-release.md).
-- `.github/workflows/publish.yml` is intentionally limited to the formal `0.1.0` release.
+- The initial release is complete and retained in the archived [Initial Release Plan](../archive/initial-release.md).
+- `@hudrazine/pi-exa-web@0.1.0`, Git tag `v0.1.0`, and its GitHub Release are published and verified.
+- The `npm-production` Environment and npm Trusted Publisher are configured and have completed one approval-gated OIDC publication without a token or GitHub secret.
+- `.github/workflows/publish.yml` remains limited to the completed formal `0.1.0` release and must not be dispatched again before this plan replaces its one-time behavior.
 - Its `EXPECTED_VERSION: 0.1.0` check is a one-time safety guard, not a value to update for later releases.
 - The package has no Changesets configuration or dependency and no `CHANGELOG.md`.
 - `bumpp` is present as an unused development dependency.
-- npm Trusted Publisher and GitHub Environment setup cannot be completed until the scoped preview package exists.
 
 ## Proposed Changes
 
