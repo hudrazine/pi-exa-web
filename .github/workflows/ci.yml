@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-and-test:
+    name: Check and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Vite+ and install dependencies
+        uses: voidzero-dev/setup-vp@v1.17.0
+        with:
+          version-file: package.json
+          node-version-file: package.json
+          run-install: |
+            - args: ["--frozen-lockfile"]
+          cache: true
+
+      - name: Check package
+        run: vp run check
+
+      - name: Test package
+        run: vp run test
