@@ -5,6 +5,12 @@ export default defineConfig({
 
   fmt: {
     ignorePatterns: [".agents/**"],
+    overrides: [
+      {
+        files: ["**/*.md"],
+        options: { proseWrap: "never" },
+      },
+    ],
   },
 
   lint: {
