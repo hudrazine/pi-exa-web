@@ -7,7 +7,7 @@ status: active
 
 ## Purpose
 
-`pi-exa-web` is a Pi Package for npm distribution that adds basic web search and page retrieval to Pi. It exposes two Pi-native tools and uses Exa Hosted MCP as a private backend.
+`@hudrazine/pi-exa-web` is a Pi Package for npm distribution that adds basic web search and page retrieval to Pi. It exposes two Pi-native tools and uses Exa Hosted MCP as a private backend.
 
 This document defines the implemented and accepted design for the initial `0.1.0` release.
 
