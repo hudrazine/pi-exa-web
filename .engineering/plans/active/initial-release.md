@@ -20,8 +20,9 @@ Publish and verify `@hudrazine/pi-exa-web@0.0.1` under the `preview` dist-tag, d
 - Changesets is intentionally deferred to the separate [release automation plan](changesets-release-automation.md) after `0.1.0`.
 - The final `0.0.1` repository files pass format, lint, typecheck, all 36 tests, and dry-run package inspection.
 - `pi-exa-web@0.0.1` is published and verified from the npm registry. The registry tarball matches the intended seven-file set, and both bounded Pi tool calls succeeded through the anonymous route.
-- `preview` resolves to `0.0.1`. npm also assigned `latest` to the first package version and rejected its removal; the formal `0.1.0` release will replace that temporary bootstrap tag state.
-- The unscoped package is now migration evidence rather than the supported name. The scoped preview will reuse its Pi smoke-test evidence only after the scoped source files match byte for byte.
+- `@hudrazine/pi-exa-web@0.0.1` is published and verified from the npm registry. Its seven-file tarball has the expected metadata, and its LICENSE and four source files match the verified unscoped artifact byte for byte, so the accepted name-only migration reuses the completed Pi smoke-test evidence.
+- The scoped `preview` and temporary bootstrap `latest` tags both resolve to `0.0.1`. The formal `0.1.0` release will move `latest`.
+- The unscoped `pi-exa-web@0.0.1` remains as migration evidence and is deprecated with `Moved to @hudrazine/pi-exa-web`.
 
 ## Proposed Changes
 
@@ -35,8 +36,8 @@ Publish the verified contents as `@hudrazine/pi-exa-web@0.0.1`, inspect the immu
 4. [x] After explicit authorization, publish `0.0.1` interactively with 2FA and the `preview` dist-tag.
 5. [x] Install `pi-exa-web@0.0.1` from npm, inspect the registry artifact, and complete one bounded anonymous call with each tool.
 6. [x] Rename the npm package to `@hudrazine/pi-exa-web`, update current documentation, and repeat the repository checks and dry-run package inspection.
-7. [ ] Publish `@hudrazine/pi-exa-web@0.0.1` under `preview`, inspect the scoped registry artifact, and confirm that its source files match the verified unscoped artifact without repeating the Pi smoke test.
-8. [ ] Deprecate the unscoped `pi-exa-web` package with a message directing users to `@hudrazine/pi-exa-web`.
+7. [x] Publish `@hudrazine/pi-exa-web@0.0.1` under `preview`, inspect the scoped registry artifact, and confirm that its source files match the verified unscoped artifact without repeating the Pi smoke test.
+8. [x] Deprecate the unscoped `pi-exa-web` package with a message directing users to `@hudrazine/pi-exa-web`.
 9. [ ] Create the `npm-production` GitHub Environment with one required reviewer and a `main` deployment restriction.
 10. [ ] Configure npm Trusted Publisher for `@hudrazine/pi-exa-web`, `hudrazine/pi-exa-web`, `publish.yml`, `npm-production`, and `npm publish`; do not configure a publish token.
 11. [ ] Set `package.json` to `0.1.0`, repeat the local release gates, and merge the release files to `main`.
