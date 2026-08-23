@@ -2,6 +2,10 @@
 
 Guidance for AI coding agents working in this repository.
 
+## Project Overview
+
+`pi-exa-web` is a Pi Package that provides Pi-native `web_search` and `web_fetch` tools through Exa Hosted MCP, using anonymous access first and `EXA_API_KEY` only after an anonymous rate limit. See [the engineering documentation](.engineering/index.md) for the accepted design and current implementation status.
+
 ## Commands
 
 This project uses Vite+, a unified toolchain with the global CLI `vp`. `vp <name>` runs a built-in; `vp run <name>` runs a `package.json` script or `vite.config.ts` task—scripts cannot overwrite built-ins, so check those files first. Docs: `node_modules/vite-plus/docs` or https://viteplus.dev/guide/.
