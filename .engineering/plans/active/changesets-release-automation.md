@@ -19,7 +19,8 @@ After `@hudrazine/pi-exa-web@0.1.0` is published and verified, use Changesets to
 - `.github/workflows/publish.yml` uses the individual `changesets/action@2.1.1` actions for mode selection, release-PR versioning, and publishing.
 - The release-PR job has repository and pull-request write access but no OIDC permission. Only the approval-gated `npm-production` publish job has `id-token: write`.
 - Local checks, all 36 tests, a frozen install, seven-file package inspection, workflow parsing and permission assertions, and an isolated `0.1.0` to `0.1.1` Changesets version simulation pass.
-- No npm publication or GitHub repository setting was changed. The first live Changesets-managed release and its external verification remain outstanding.
+- The implementation and pnpm interoperability fix are merged. On `main`, [Release run 32694790843](https://github.com/hudrazine/pi-exa-web/actions/runs/32694790843) resolved Vite+-managed pnpm `11.22.0`, completed `changeset publish-plan`, selected the no-release mode, and skipped the version, verify, and publish jobs as intended.
+- No npm publication or GitHub repository setting was changed during the rollout. The first live Changesets-managed release and its external verification remain outstanding.
 
 ## Proposed Changes
 
@@ -35,8 +36,9 @@ Verify the repository-side Changesets implementation with the first live automat
 6. [x] Replace the one-time `0.1.0` publish behavior in `publish.yml`, remove `EXPECTED_VERSION` and its fixed-version check, and add a generic publish job that runs checks and package inspection, waits for `npm-production` approval, publishes through OIDC, and creates the Git tag and GitHub Release.
 7. [x] Test the version and changelog flow locally without contacting npm.
 8. [x] Update the current release procedure for Changesets-managed releases.
-9. [ ] Verify the first automated release with matching npm metadata, provenance, Git tag, GitHub Release, changelog, and bounded registry and Pi smoke tests.
-10. [ ] Archive this plan after the first automated release is verified.
+9. [x] Verify on `main` that Vite+ exposes pnpm `11.22.0` to Changesets and the no-release mode exits successfully without running privileged jobs.
+10. [ ] Verify the first automated release with matching npm metadata, provenance, Git tag, GitHub Release, changelog, and bounded registry and Pi smoke tests.
+11. [ ] Archive this plan after the first automated release is verified.
 
 ## Completion Criteria
 
