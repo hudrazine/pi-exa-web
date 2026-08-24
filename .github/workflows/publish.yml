@@ -1,7 +1,9 @@
-name: Publish 0.1.0
+name: Release
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 permissions: {}
 
@@ -9,14 +11,13 @@ concurrency:
   group: npm-publish
   cancel-in-progress: false
 
-env:
-  EXPECTED_VERSION: 0.1.0
-
 jobs:
-  verify:
-    name: Verify release
+  select-mode:
+    name: Select release mode
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      mode: ${{ steps.changesets.outputs.mode }}
     permissions:
       contents: read
     steps:
@@ -24,12 +25,6 @@ jobs:
         uses: actions/checkout@v7
         with:
           persist-credentials: false
-
-      - name: Require main branch
-        if: github.ref != 'refs/heads/main'
-        run: |
-          echo "Publish must run from main; received ${GITHUB_REF}." >&2
-          exit 1
 
       - name: Set up Vite+ and install dependencies
         uses: voidzero-dev/setup-vp@v1.17.0
@@ -40,13 +35,63 @@ jobs:
             - args: ["--frozen-lockfile"]
           cache: false
 
-      - name: Require release version
-        run: |
-          actual_version=$(node -p "require('./package.json').version")
-          if [ "$actual_version" != "$EXPECTED_VERSION" ]; then
-            echo "Expected package version ${EXPECTED_VERSION}; received ${actual_version}." >&2
-            exit 1
-          fi
+      - name: Select release mode
+        id: changesets
+        uses: changesets/action/select-mode@v2.1.1
+
+  version:
+    name: Create or update release pull request
+    if: needs.select-mode.outputs.mode == 'version'
+    needs: select-mode
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Vite+ and install dependencies
+        uses: voidzero-dev/setup-vp@v1.17.0
+        with:
+          version-file: package.json
+          node-version-file: package.json
+          run-install: |
+            - args: ["--frozen-lockfile"]
+          cache: false
+
+      - name: Create or update release pull request
+        uses: changesets/action/version@v2.1.1
+        with:
+          script: vp run version-packages
+          commit-message: "chore(release): version package"
+          pr-title: "chore(release): version package"
+
+  verify:
+    name: Verify release
+    if: needs.select-mode.outputs.mode == 'publish'
+    needs: select-mode
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Vite+ and install dependencies
+        uses: voidzero-dev/setup-vp@v1.17.0
+        with:
+          version-file: package.json
+          node-version-file: package.json
+          run-install: |
+            - args: ["--frozen-lockfile"]
+          cache: false
 
       - name: Check package
         run: vp run check
@@ -59,13 +104,16 @@ jobs:
 
   publish:
     name: Publish to npm
-    needs: verify
+    if: needs.select-mode.outputs.mode == 'publish'
+    needs:
+      - select-mode
+      - verify
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
       name: npm-production
     permissions:
-      contents: read
+      contents: write
       id-token: write
     steps:
       - name: Check out repository
@@ -83,5 +131,9 @@ jobs:
           cache: false
           registry-url: https://registry.npmjs.org
 
-      - name: Publish package
-        run: vp pm publish --access public --tag latest --no-git-checks
+      - name: Publish package and create release
+        uses: changesets/action/publish@v2.1.1
+        with:
+          script: vp run release
+          create-github-releases: true
+          push-git-tags: true
