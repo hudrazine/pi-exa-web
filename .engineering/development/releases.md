@@ -11,6 +11,8 @@ status: active
 
 Changesets now owns subsequent package versions and `CHANGELOG.md` updates. A push to `main` runs `.github/workflows/publish.yml`, which either creates or updates the release pull request, publishes an approved release, or exits without release work. The first Changesets-managed release remains to be verified under the active [Changesets Release Automation Plan](../plans/active/changesets-release-automation.md).
 
+The no-release path is verified on `main`: Vite+ supplied pnpm `11.22.0`, Changesets selected no release work, and the privileged jobs remained skipped.
+
 ## Preconditions
 
 - Work from a clean branch based on current `main`.
@@ -76,5 +78,6 @@ Do not treat a release as verified until the registry-installed package passes t
 - Do not fall back to an npm token when OIDC authentication fails. Check the exact repository, `publish.yml`, `npm-production`, `id-token: write`, and GitHub-hosted runner configuration, then rerun the failed workflow.
 - Do not approve `npm-production` when the verification job or package-file inspection is incomplete.
 - If release-PR creation is denied, verify that GitHub Actions may create pull requests; do not broaden workflow permissions.
+- If Changesets fails with `spawn pnpm ENOENT`, confirm that the `select-mode`, `version`, and `publish` jobs expose the directory returned by `vp env which pnpm` immediately after `setup-vp`. Keep using Vite+'s managed pnpm rather than adding a second package-manager setup path.
 - A failed publish that did not create the npm version may be retried after correcting the workflow or external configuration.
 - Published npm versions are immutable. Correct a bad artifact with a new patch version rather than trying to reuse a version.
