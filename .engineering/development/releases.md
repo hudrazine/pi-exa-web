@@ -7,77 +7,74 @@ status: active
 
 ## Current Release State
 
-`@hudrazine/pi-exa-web@0.1.0` is published and verified under `latest`; `preview` remains on `0.0.1`. Git tag and GitHub Release `v0.1.0` identify the publication commit. The fixed-version `publish.yml` workflow has completed its one-time purpose and must not be dispatched or updated for another version. Future release automation is tracked in the [Changesets Release Automation Plan](../plans/active/changesets-release-automation.md).
+`@hudrazine/pi-exa-web@0.1.0` is published and verified under `latest`; `preview` remains on `0.0.1`. Git tag and GitHub Release `v0.1.0` identify the publication commit.
+
+Changesets now owns subsequent package versions and `CHANGELOG.md` updates. A push to `main` runs `.github/workflows/publish.yml`, which either creates or updates the release pull request, publishes an approved release, or exits without release work. The first Changesets-managed release remains to be verified under the active [Changesets Release Automation Plan](../plans/active/changesets-release-automation.md).
 
 ## Preconditions
 
-- Work from a clean `main` branch that matches `origin/main`.
+- Work from a clean branch based on current `main`.
 - Use the Node.js and pnpm versions declared in `package.json`.
-- Obtain explicit authorization before any npm publication or other external release change.
+- Do not edit `package.json` or `CHANGELOG.md` manually for a routine release; Changesets updates them in the release pull request.
+- Obtain explicit authorization before approving `npm-production` or making another external release change.
 - Keep `EXA_API_KEY` unset for registry-package smoke tests and do not intentionally consume the anonymous quota to force a 429.
 - Do not add a build or generated distribution artifact. Pi loads the published TypeScript source through jiti.
+- GitHub Actions must be allowed to create pull requests before release-PR automation can operate. This repository setting is not managed by the workflow.
 
-## Completed Scoped Bootstrap Preview
+## Record A Release Intent
 
-The supported npm package is `@hudrazine/pi-exa-web`. The earlier unscoped `pi-exa-web@0.0.1` preview verified the package contents and both Pi tools before the project adopted its permanent scoped name. Publish the same `0.0.1` contents under the scope, verify their identity, and deprecate the unscoped package with a migration message.
+Follow the repository policy in [`.changeset/README.md`](../../.changeset/README.md).
 
-1. Confirm that `package.json` declares `@hudrazine/pi-exa-web@0.0.1` and the intended package metadata.
-2. Run `vp run check` and `vp run test`.
-3. Run `vp pm pack -- --dry-run --json`. Confirm that it lists only `README.md`, `LICENSE`, `package.json`, and the four `src/*.ts` files.
-4. After explicit authorization, publish interactively with 2FA:
+1. For a user-visible package change, run:
 
    ```sh
-   pnpm publish --access public --tag preview --publish-branch main
+   vp run changeset
    ```
 
-5. Reconcile the scoped registry metadata, checksums, and seven-file tarball with the local dry-run output. Confirm that README, LICENSE, and all four `src/*.ts` files match the verified unscoped artifact byte for byte.
-6. Do not repeat the Pi smoke test for this name-only migration when the scoped source files match the verified unscoped artifact. The completed `web_search` and `web_fetch` anonymous calls remain the runtime evidence.
-7. After the scoped preview is verified, deprecate the unscoped package with its replacement:
+2. Select the SemVer bump and write a concise user-facing summary.
+3. Commit the generated `.changeset/*.md` file with the implementation pull request.
+4. A changeset is not required for documentation, tests, CI configuration, or an internal refactor that does not change published behavior. Use `vp run changeset --empty` when an explicit no-release record is useful.
 
-   ```sh
-   npm deprecate pi-exa-web@"*" "Moved to @hudrazine/pi-exa-web"
-   ```
+## Review And Publish A Release
 
-After the first scoped publication, confirm that `preview` resolves to `0.0.1`. If npm also reports `latest: 0.0.1`, retain it as the registry-required initial state. Do not publish an extra version or unpublish the verified preview solely to clear `latest`.
+1. After changesets reach `main`, the `select-mode` job chooses the release mode.
+2. When versioning is required, the `version` job uses `changesets/action/version` to create or update `chore(release): version package`. This job can write repository contents and pull requests but has no OIDC permission.
+3. Review the release pull request's package version, consumed changesets, and `CHANGELOG.md`, then run or approve its required CI checks and merge it.
+4. The resulting `main` push selects publish mode. The read-only `verify` job runs `vp run check`, `vp run test`, and `vp pm pack -- --dry-run --json` before any deployment approval.
+5. Inspect the completed verification output. After explicit authorization, approve the waiting `npm-production` deployment.
+6. Only the approved `publish` job has `id-token: write`. It runs `vp run release`, which uses Changesets and pnpm to publish through npm Trusted Publisher without a token. The package's `prepublishOnly` script repeats check and test during publication.
+7. `changesets/action/publish` pushes the single-package `v<version>` tag and creates the matching GitHub Release from the changelog entry.
 
-Published npm versions are immutable. If the scoped registry artifact is wrong, fix the repository, increment to `0.0.2`, repeat the gates, and publish the replacement under `preview`; do not attempt to reuse `0.0.1`.
+The release pull request uses the repository `GITHUB_TOKEN`. If GitHub presents an approval banner for workflows created by that token, a maintainer must approve those CI runs before merging the pull request.
 
 ## Trusted Publisher Configuration
 
-The formal release used these external settings:
+The external binding must remain exact and case-sensitive:
 
-1. Create the public repository environment `npm-production` in GitHub.
-2. Require one reviewer for the environment and limit deployment branches to `main`. A sole maintainer must not enable prevention of self-review unless another eligible reviewer exists.
-3. In the npm settings for `@hudrazine/pi-exa-web`, configure a GitHub Actions Trusted Publisher with:
-   - organization or user: `hudrazine`
-   - repository: `pi-exa-web`
-   - workflow filename: `publish.yml`
-   - environment: `npm-production`
-   - allowed action: `npm publish`
-4. Do not add an npm token to GitHub. The publish job authenticates only through OIDC.
+- organization or user: `hudrazine`
+- repository: `pi-exa-web`
+- workflow filename: `publish.yml`
+- environment: `npm-production`
+- allowed action: `npm publish`
 
-The names are exact and case-sensitive. The workflow and npm Trusted Publisher environment must match.
-
-## Completed Formal 0.1.0 Release
-
-1. Change `package.json` from `0.0.1` to `0.1.0`, repeat the local release gates, and merge the final release files to `main`.
-2. Manually dispatch `.github/workflows/publish.yml` from `main`.
-3. Inspect the completed `Verify release` job, including its check, test, and dry-run package output.
-4. Approve the waiting `npm-production` deployment.
-5. The publish job uses Vite+ to repeat installation and the `prepublishOnly` gates, then runs `vp pm publish` with the `latest` dist-tag. Only this job has `id-token: write`.
-6. Install `@hudrazine/pi-exa-web@0.1.0` from the registry and repeat the bounded anonymous smoke test.
-7. Create the `v0.1.0` Git tag and GitHub Release with concise initial-release notes after registry verification.
-8. After trusted publication succeeds, set npm publishing access to require 2FA and disallow traditional tokens.
+`npm-production` requires one reviewer and accepts deployments only from `main`. A sole maintainer must remain able to self-review unless another eligible reviewer is added. Do not add an npm token to GitHub; authentication uses OIDC only.
 
 ## Verification
 
-The verified registry state contains versions `0.0.1` and `0.1.0`, with `preview` resolving to `0.0.1` and `latest` resolving to `0.1.0`. The formal artifact contains the expected seven files, matches the publication commit, and carries npm provenance. A clean Pi installation of `0.1.0` completed one bounded anonymous `web_search` call and one bounded anonymous `web_fetch` call. Git tag and GitHub Release `v0.1.0` target the publication commit.
+After a successful publication:
 
-The package requires 2FA for publishing and disallows bypass-2FA tokens. GitHub Actions and the `npm-production` Environment contain no secrets. Do not reuse the one-time workflow for later versions.
+1. Confirm that npm `latest` resolves to the release-PR version and that the artifact carries provenance.
+2. Confirm that the registry artifact contains only `README.md`, `LICENSE`, `package.json`, and the four `src/*.ts` files.
+3. Confirm that the Git tag, GitHub Release, npm version, and `CHANGELOG.md` entry use the same version and release notes.
+4. Install the exact registry version in a clean Pi package directory.
+5. With `EXA_API_KEY` unset, make one bounded anonymous `web_search` call and one bounded anonymous `web_fetch` call.
+
+Do not treat a release as verified until the registry-installed package passes the smoke tests.
 
 ## Failure Handling
 
-- Do not fall back to an npm token when OIDC authentication fails. Check the exact repository, `publish.yml`, `npm-production`, `id-token: write`, and GitHub-hosted runner configuration, then rerun the workflow.
-- Do not approve the environment when the verification job or its package-file inspection is incomplete.
+- Do not fall back to an npm token when OIDC authentication fails. Check the exact repository, `publish.yml`, `npm-production`, `id-token: write`, and GitHub-hosted runner configuration, then rerun the failed workflow.
+- Do not approve `npm-production` when the verification job or package-file inspection is incomplete.
+- If release-PR creation is denied, verify that GitHub Actions may create pull requests; do not broaden workflow permissions.
 - A failed publish that did not create the npm version may be retried after correcting the workflow or external configuration.
-- Do not treat a future release as verified until its registry-installed package has passed the required smoke tests.
+- Published npm versions are immutable. Correct a bad artifact with a new patch version rather than trying to reuse a version.
