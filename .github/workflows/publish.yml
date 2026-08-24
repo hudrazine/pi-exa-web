@@ -38,17 +38,10 @@ jobs:
       - name: Expose and verify pnpm
         shell: bash
         run: |
-          pnpm_path=$(vp env which pnpm | head -n 1)
-          pnpm_dir=$(dirname "$pnpm_path")
+          pnpm_dir=$(dirname "$(vp env which pnpm | head -n 1)")
           echo "$pnpm_dir" >> "$GITHUB_PATH"
           export PATH="$pnpm_dir:$PATH"
-
-          expected_version=$(node -p "require('./package.json').devEngines.packageManager.version")
-          actual_version=$(pnpm --version)
-          if [ "$actual_version" != "$expected_version" ]; then
-            echo "Expected pnpm ${expected_version}; received ${actual_version}." >&2
-            exit 1
-          fi
+          pnpm --version | grep -Fx "$(node -p "require('./package.json').devEngines.packageManager.version")"
 
       - name: Select release mode
         id: changesets
@@ -81,17 +74,10 @@ jobs:
       - name: Expose and verify pnpm
         shell: bash
         run: |
-          pnpm_path=$(vp env which pnpm | head -n 1)
-          pnpm_dir=$(dirname "$pnpm_path")
+          pnpm_dir=$(dirname "$(vp env which pnpm | head -n 1)")
           echo "$pnpm_dir" >> "$GITHUB_PATH"
           export PATH="$pnpm_dir:$PATH"
-
-          expected_version=$(node -p "require('./package.json').devEngines.packageManager.version")
-          actual_version=$(pnpm --version)
-          if [ "$actual_version" != "$expected_version" ]; then
-            echo "Expected pnpm ${expected_version}; received ${actual_version}." >&2
-            exit 1
-          fi
+          pnpm --version | grep -Fx "$(node -p "require('./package.json').devEngines.packageManager.version")"
 
       - name: Create or update release pull request
         uses: changesets/action/version@v2.1.1
@@ -164,17 +150,10 @@ jobs:
       - name: Expose and verify pnpm
         shell: bash
         run: |
-          pnpm_path=$(vp env which pnpm | head -n 1)
-          pnpm_dir=$(dirname "$pnpm_path")
+          pnpm_dir=$(dirname "$(vp env which pnpm | head -n 1)")
           echo "$pnpm_dir" >> "$GITHUB_PATH"
           export PATH="$pnpm_dir:$PATH"
-
-          expected_version=$(node -p "require('./package.json').devEngines.packageManager.version")
-          actual_version=$(pnpm --version)
-          if [ "$actual_version" != "$expected_version" ]; then
-            echo "Expected pnpm ${expected_version}; received ${actual_version}." >&2
-            exit 1
-          fi
+          pnpm --version | grep -Fx "$(node -p "require('./package.json').devEngines.packageManager.version")"
 
       - name: Publish package and create release
         uses: changesets/action/publish@v2.1.1
