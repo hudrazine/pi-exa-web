@@ -1,8 +1,3 @@
----
-type: plan
-status: active
----
-
 # Changesets Release Automation Plan
 
 ## Goal
@@ -11,7 +6,7 @@ After `@hudrazine/pi-exa-web@0.1.0` is published and verified, use Changesets to
 
 ## Current State
 
-- The initial release is complete and retained in the archived [Initial Release Plan](../archive/initial-release.md).
+- The initial release is complete and retained in the archived [Initial Release Plan](archive/initial-release.md).
 - `@hudrazine/pi-exa-web@0.1.0`, Git tag `v0.1.0`, and its GitHub Release are published and verified.
 - The `npm-production` Environment and npm Trusted Publisher are configured and have completed one approval-gated OIDC publication without a token or GitHub secret.
 - `@changesets/cli@3.0.1` is locked as a development dependency, and `bumpp` has been removed.

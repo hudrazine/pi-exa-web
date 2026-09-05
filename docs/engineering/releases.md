@@ -1,15 +1,10 @@
----
-type: development
-status: active
----
-
 # npm Release Procedure
 
 ## Current Release State
 
 `@hudrazine/pi-exa-web@0.1.0` is published and verified under `latest`; `preview` remains on `0.0.1`. Git tag and GitHub Release `v0.1.0` identify the publication commit.
 
-Changesets now owns subsequent package versions and `CHANGELOG.md` updates. A push to `main` runs `.github/workflows/publish.yml`, which either creates or updates the release pull request, publishes an approved release, or exits without release work. The first Changesets-managed release remains to be verified under the active [Changesets Release Automation Plan](../plans/active/changesets-release-automation.md).
+Changesets now owns subsequent package versions and `CHANGELOG.md` updates. A push to `main` runs `.github/workflows/publish.yml`, which either creates or updates the release pull request, publishes an approved release, or exits without release work. The first Changesets-managed release remains to be verified under the active [Changesets Release Automation Plan](plans/changesets-release-automation.md).
 
 The no-release path is verified on `main`: Vite+ supplied pnpm `11.22.0`, Changesets selected no release work, and the privileged jobs remained skipped.
 

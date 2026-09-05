@@ -1,8 +1,3 @@
----
-type: plan
-status: archived
----
-
 # Initial Release Plan
 
 ## Goal
@@ -11,13 +6,13 @@ Publish and verify `@hudrazine/pi-exa-web@0.0.1` under the `preview` dist-tag, d
 
 ## Completed State
 
-- The accepted [Exa Web Extension design](../../design/exa-web-extension.md) is implemented and locally verified.
+- The accepted [Exa Web Extension design](../../exa-web-extension.md) is implemented and locally verified.
 - The [initial implementation plan](initial-implementation.md) is complete and archived.
 - The public README documents installation, tool inputs, authentication behavior, limits, troubleshooting, and development.
 - `package.json` declares the permanent npm name `@hudrazine/pi-exa-web` and formal release version `0.1.0`.
 - The repository contains a dedicated `0.1.0` publish workflow that separates verification from the approval-gated OIDC publish job.
-- The [npm release procedure](../../development/releases.md) owns the exact local and external steps.
-- Changesets is intentionally deferred to the separate [release automation plan](../active/changesets-release-automation.md) after `0.1.0`.
+- The [npm release procedure](../../releases.md) owns the exact local and external steps.
+- Changesets is intentionally deferred to the separate [release automation plan](../changesets-release-automation.md) after `0.1.0`.
 - The final `0.0.1` repository files pass format, lint, typecheck, all 36 tests, and dry-run package inspection.
 - `pi-exa-web@0.0.1` is published and verified from the npm registry. The registry tarball matches the intended seven-file set, and both bounded Pi tool calls succeeded through the anonymous route.
 - `@hudrazine/pi-exa-web@0.0.1` is published and verified from the npm registry. Its seven-file tarball has the expected metadata, and its LICENSE and four source files match the verified unscoped artifact byte for byte, so the accepted name-only migration reuses the completed Pi smoke-test evidence.
