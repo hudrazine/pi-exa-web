@@ -4,18 +4,15 @@ Guidance for AI coding agents working in this repository.
 
 ## Project Overview
 
-`pi-exa-web` is a Pi Package that provides Pi-native `web_search` and `web_fetch` tools through Exa Hosted MCP, using anonymous access first and `EXA_API_KEY` only after an anonymous rate limit. See [the engineering documentation](.engineering/index.md) for the accepted design, active plans, and implementation history.
+`pi-exa-web` is a Pi Package that provides Pi-native `web_search` and `web_fetch` tools through Exa Hosted MCP, using anonymous access first and `EXA_API_KEY` only after an anonymous rate limit. See [the engineering documentation](docs/engineering/index.md) for the accepted design, active plans, and implementation history.
 
 ## Commands
 
-This project uses Vite+, a unified toolchain with the global CLI `vp`. `vp <name>` runs a built-in; `vp run <name>` runs a `package.json` script or `vite.config.ts` task—scripts cannot overwrite built-ins, so check those files first. Docs: `node_modules/vite-plus/docs` or https://viteplus.dev/guide/.
+This repository uses Vite+, a unified toolchain for runtime and package management, development, builds, tests, formatting, linting, and type checking through the global `vp` CLI. Use `vp <command>` for built-in commands and `vp run <name>` for scripts defined in `package.json` or tasks in `vite.config.ts`. Documentation is available locally at `node_modules/vite-plus/docs` and online at https://viteplus.dev/guide/.
 
-- `vp help` / `vp <command> --help`: list commands and show command help
-- `vp install`: after pulling remote changes and before starting work
-- `vp run check`: format, lint, and typecheck changes (`--fix` applies auto-fixes)
-- `vp run test`: test code
-- `vp run <script>`: run other project scripts or Vite Task entries needed for validation
-- `vp env doctor`: when setup, runtime, or package-manager behavior looks wrong; include its output when asking for help
+- `vp install`: Install dependencies
+- `vp run check`: Check formatting, linting, and types (`--fix` applies auto-fixes)
+- `vp run test`: Run tests
 
 Pi loads the TypeScript Extension source through jiti, so this package has no build step or generated distribution artifact.
 

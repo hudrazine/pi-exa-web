@@ -1,13 +1,8 @@
----
-type: plan
-status: archived
----
-
 # Initial Implementation Plan
 
 ## Goal
 
-Implement and locally verify a Pi Package that follows the accepted [Exa Web Extension design](../../design/exa-web-extension.md) without adding generic provider or MCP abstractions.
+Implement and locally verify a Pi Package that follows the accepted [Exa Web Extension design](../../exa-web-extension.md) without adding generic provider or MCP abstractions.
 
 ## Completed State
 
