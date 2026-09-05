@@ -1,6 +1,6 @@
 catalog:
-  vite: npm:@voidzero-dev/vite-plus-core@0.2.9
-  vite-plus: 0.2.9
+  vite: npm:@voidzero-dev/vite-plus-core@0.3.0
+  vite-plus: 0.3.0
 overrides:
   vite: "catalog:"
 peerDependencyRules:
@@ -8,6 +8,13 @@ peerDependencyRules:
     - vite
   allowedVersions:
     vite: "*"
+minimumReleaseAgeExclude:
+  - "@earendil-works/chord"
+  - "@earendil-works/pi-agent-core"
+  - "@earendil-works/pi-ai"
+  - "@earendil-works/pi-coding-agent"
+  - "@earendil-works/pi-telemetry"
+  - "@earendil-works/pi-tui"
 
 # Supply-chain policy
 minimumReleaseAge: 1440
@@ -25,4 +32,5 @@ strictDepBuilds: true
 dangerouslyAllowAllBuilds: false
 allowBuilds:
   "@google/genai": false
+  esbuild: false
   protobufjs: false
