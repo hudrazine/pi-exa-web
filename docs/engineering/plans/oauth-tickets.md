@@ -40,8 +40,8 @@ Split OAuth into ordinary-call authentication (PR4) and interactive login and ma
 | T5 | PR2 | OAuth revisions and settings replacement | Done | [Merged PR #16](https://github.com/hudrazine/pi-exa-web/pull/16); [four CI jobs passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016) |
 | T6 | PR3 | Strategy settings, 402 fallback, and display | Done | [Merged PR #17](https://github.com/hudrazine/pi-exa-web/pull/17), `346f0f8`; [four CI jobs passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34330004672) for `a0b32de` |
 | T7 | PR5 | OAuth login validation and commit | Todo | — |
-| T8 | PR4 | Refresh and local logout | In review | Local dev/minimum checks passed: rotating-token, L4/L5 and cleanup tests; OS CI/merge pending |
-| T9 | PR4 | OAuth route selection and 401 recovery | In review | Local dev/minimum checks passed: real SDK, retry/lifecycle and Pi boundary tests; OS CI/merge pending |
+| T8 | PR4 | Refresh and local logout | In review | [Draft PR #19](https://github.com/hudrazine/pi-exa-web/pull/19); local dev/minimum checks passed: rotating-token, L4/L5 and cleanup tests; OS CI/merge pending |
+| T9 | PR4 | OAuth route selection and 401 recovery | In review | [Draft PR #19](https://github.com/hudrazine/pi-exa-web/pull/19); local dev/minimum checks passed: real SDK, retry/lifecycle and Pi boundary tests; OS CI/merge pending |
 | T10 | PR5 | Pi management commands and shutdown | Todo | — |
 | T11 | PR2 | CI for operating systems and minimum Node version | Done | [Merged PR #16](https://github.com/hudrazine/pi-exa-web/pull/16); [four CI jobs passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016) |
 | T12 | PR6 | Documentation, package contents, and Changeset | Todo | — |
