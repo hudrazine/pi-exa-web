@@ -12,16 +12,16 @@
 - Keep credentials out of URLs, UI metadata, and error output.
 - Keep normal verification deterministic and independent of Hosted Exa availability and quota.
 
-The [tool contract](design/web-tools.md) owns caller-visible behavior and the known error-safety limitation. The [authentication contract](design/anonymous-first.md) owns credential use and replay. The [architecture](architecture.md) explains how these requirements are implemented; [quality criteria](quality.md) define the required evidence.
+The [tool contract](design/web-tools.md) owns caller-visible behavior and the safe-error boundary. The [authentication contract](design/anonymous-first.md) owns credential use and replay. The [architecture](architecture.md) explains how these requirements are implemented; [quality criteria](quality.md) define the required evidence.
 
 ## Implemented Scope
 
-The repository implements version `0.1.0`: Exa only, one URL per fetch, anonymous-first access, and an optional `EXA_API_KEY`. It has no management commands, settings file, OAuth, persistent quota state, or cross-process coordination. Installation and end-user usage belong in the [README](../../README.md).
+The repository retains the `0.1.0` feature scope: Exa only, one URL per fetch, anonymous-first access, and an optional `EXA_API_KEY`. Unreleased PR1 adds safe package errors and separate route connections, including session-only recovery and HTTP cancellation. It has no management commands, settings file, OAuth, persistent quota state, or cross-process coordination. Installation and end-user usage belong in the [README](../../README.md).
 
 Advanced Exa search, Agent features, direct Exa API integration, alternate providers, custom endpoints/proxies, caching, telemetry, client-side rate scheduling, and configurable retry policies are outside this scope.
 
 ## Development Direction
 
-OAuth login and selectable access strategies are accepted for `0.2.0`, together with the OAuth state lifecycle, SQLite coordination mechanism, and higher Node.js minimum. Implementation and verification have not started. The [OAuth plan](plans/oauth-routing.md) defines delivery and links to the accepted contracts.
+OAuth login and selectable access strategies are accepted for `0.2.0`, together with the OAuth state lifecycle, SQLite coordination mechanism, and higher Node.js minimum. PR1's connection and safe-error foundation is implemented locally; OAuth, strategies, and persistent state remain unimplemented. The [OAuth plan](plans/oauth-routing.md) defines delivery and links to the accepted contracts.
 
 Changesets release automation is implemented. Its first complete managed publication remains an independent [verification task](plans/changesets-release-automation.md).

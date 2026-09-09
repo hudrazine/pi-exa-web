@@ -1,6 +1,6 @@
 # v0.2.0 Local Tickets and PR Tracking
 
-**Status:** Initial review slices; implementation not started
+**Status:** PR1 implemented locally and ready for review; PR2–PR6 not started
 
 This tracker organizes the accepted 0.2.0 design into local tickets and PRs. Use T1–T14 as stable ticket IDs without GitHub Issues. The authoritative designs are [routing](../proposals/oauth-routing.md), [OAuth state](../proposals/oauth-state.md), and [SQLite locking](../design/oauth-state-locking.md). This document tracks scope, acceptance criteria, dependencies, and progress. The review baseline is `c6158b20fbc32d09bc7853836a4142e33a841ecc`.
 
@@ -33,8 +33,8 @@ Split OAuth into ordinary-call authentication (PR4) and interactive login and ma
 
 | Ticket | PR unit | Scope | Progress | PR / evidence |
 | --- | --- | --- | --- | --- |
-| T1 | PR1 | Safe errors and SDK pinning | Todo | — |
-| T2 | PR1 | Route-specific MCP connections | Todo | — |
+| T1 | PR1 | Safe errors and SDK pinning | In review | [Draft PR #15](https://github.com/hudrazine/pi-exa-web/pull/15) |
+| T2 | PR1 | Route-specific MCP connections | In review | [Draft PR #15](https://github.com/hudrazine/pi-exa-web/pull/15) |
 | T3 | PR3 | Anonymous probes and cooldown | Todo | — |
 | T4 | PR2 | SQLite locking | Todo | — |
 | T5 | PR2 | OAuth revisions and settings replacement | Todo | — |
@@ -47,6 +47,8 @@ Split OAuth into ordinary-call authentication (PR4) and interactive login and ma
 | T12 | PR6 | Documentation, package contents, and Changeset | Todo | — |
 | T13 | Verification gate | Hosted OAuth smoke | Todo | — |
 | T14 | Verification gate | Release and first managed publication verification | Todo | — |
+
+PR1 local verification is covered by `tests/anonymous-first.test.ts`, `tests/exa-mcp-client.test.ts`, and `tests/index.test.ts`: safe failures and retry times, route-specific sessions, cancellation, bounded recovery/shutdown, Pi source loading, rendering, and persisted error records. T1/T2 remain unmerged; mark Done only after merge. Authenticated tool-text classifiers and the new probe/cooldown behavior remain T6/T3 work.
 
 ## Shared acceptance requirements
 

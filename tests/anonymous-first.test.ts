@@ -1,346 +1,166 @@
-import type { FetchLike } from "@modelcontextprotocol/client";
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
-import { createAnonymousFirstPolicy } from "../src/anonymous-first.ts";
+import { createAnonymousFirstPolicy, type AuthRoute } from "../src/anonymous-first.ts";
+import { ExaError, readRetryAt } from "../src/errors.ts";
 
-const MCP_URL = "https://mcp.exa.ai/mcp";
-const TOOL_CALL_BODY = JSON.stringify({
-  jsonrpc: "2.0",
-  id: 1,
-  method: "tools/call",
-  params: { name: "web_search_exa", arguments: { query: "Pi" } },
-});
+const signal = new AbortController().signal;
+const now = Date.parse("2026-08-17T00:00:00Z");
+afterEach(() => vi.useRealTimers());
 
-afterEach(() => {
-  vi.useRealTimers();
-});
-
-describe("anonymous-first policy", () => {
-  test("passes non-tool requests through unchanged", async () => {
-    const response = new Response(null, { status: 202 });
-    const baseFetch = vi.fn<FetchLike>().mockResolvedValue(response);
-    const policy = createAnonymousFirstPolicy({ fetch: baseFetch });
-    const signal = new AbortController().signal;
-    const init: RequestInit = {
-      method: "POST",
-      headers: { "mcp-session-id": "session" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize" }),
-      signal,
-    };
-
-    await expect(policy.fetch(MCP_URL, init)).resolves.toBe(response);
-    expect(baseFetch).toHaveBeenCalledOnce();
-    expect(baseFetch).toHaveBeenCalledWith(MCP_URL, init);
-  });
-
-  test("passes malformed and non-string bodies through without inspecting them", async () => {
-    const baseFetch = vi.fn<FetchLike>().mockResolvedValue(new Response("ok"));
-    const policy = createAnonymousFirstPolicy({ fetch: baseFetch });
-    const malformed: RequestInit = { method: "POST", body: "{" };
-    const binary: RequestInit = { method: "POST", body: new Blob([TOOL_CALL_BODY]) };
-
-    await policy.fetch(MCP_URL, malformed);
-    await policy.fetch(MCP_URL, binary);
-
-    expect(baseFetch.mock.calls).toEqual([
-      [MCP_URL, malformed],
-      [MCP_URL, binary],
+describe("anonymous-first intent policy", () => {
+  test("returns the route of each concurrent successful operation", async () => {
+    const policy = createAnonymousFirstPolicy(true);
+    const fallback = vi
+      .fn<(route: AuthRoute) => Promise<string>>()
+      .mockRejectedValueOnce(new ExaError("anonymous-rate-limit", Date.now() + 10_000))
+      .mockResolvedValueOnce("key");
+    const anonymous = vi.fn(async () => "anonymous");
+    expect(
+      await Promise.all([policy.run(fallback, signal), policy.run(anonymous, signal)]),
+    ).toEqual([
+      { result: "key", auth: "api-key" },
+      { result: "anonymous", auth: "anonymous" },
     ]);
+    expect(fallback.mock.calls).toEqual([["anonymous"], ["api-key"]]);
+    expect(anonymous).toHaveBeenCalledOnce();
   });
 
-  test("rejects a tool call outside the call-local context before sending it", async () => {
-    const baseFetch = vi.fn<FetchLike>();
-    const policy = createAnonymousFirstPolicy({ fetch: baseFetch });
-
-    await expect(policy.fetch(MCP_URL, { method: "POST", body: TOOL_CALL_BODY })).rejects.toThrow(
-      "tools/call must run inside anonymous-first policy context",
-    );
-    expect(baseFetch).not.toHaveBeenCalled();
-  });
-
-  test("reports an ordinary tool call as anonymous", async () => {
-    const response = new Response("ok");
-    const baseFetch = vi.fn<FetchLike>().mockResolvedValue(response);
-    const policy = createAnonymousFirstPolicy({ fetch: baseFetch, apiKey: "secret" });
-
-    await expect(
-      policy.run(() =>
-        policy.fetch(MCP_URL, {
-          method: "POST",
-          body: TOOL_CALL_BODY,
-        }),
-      ),
-    ).resolves.toEqual({ result: response, auth: "anonymous" });
-    expect(baseFetch).toHaveBeenCalledOnce();
-    expect(new Headers(baseFetch.mock.calls[0]?.[1]?.headers).has("x-api-key")).toBe(false);
-  });
-
-  test("waits for a short rate limit and retries anonymously once", async () => {
+  test.each([0, 1_000, 2_000])("probes once after a %i ms header delay", async (delay) => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-17T00:00:00.000Z"));
-    const success = new Response("ok");
-    const baseFetch = vi
-      .fn<FetchLike>()
-      .mockResolvedValueOnce(rateLimitResponse({ "Retry-After": "1" }))
-      .mockResolvedValueOnce(success);
-    const policy = createAnonymousFirstPolicy({ fetch: baseFetch, apiKey: "secret" });
-
-    const pending = policy.run(() =>
-      policy.fetch(MCP_URL, { method: "POST", body: TOOL_CALL_BODY }),
-    );
-    await vi.advanceTimersByTimeAsync(999);
-    expect(baseFetch).toHaveBeenCalledTimes(1);
-    await vi.advanceTimersByTimeAsync(1);
-
-    await expect(pending).resolves.toEqual({ result: success, auth: "anonymous" });
-    expect(baseFetch).toHaveBeenCalledTimes(2);
-    expect(new Headers(baseFetch.mock.calls[1]?.[1]?.headers).has("x-api-key")).toBe(false);
+    vi.setSystemTime(now);
+    const policy = createAnonymousFirstPolicy(true);
+    const run = vi
+      .fn<(route: AuthRoute) => Promise<string>>()
+      .mockRejectedValueOnce(new ExaError("anonymous-rate-limit", now + delay))
+      .mockResolvedValueOnce("ok");
+    const pending = policy.run(run, signal);
+    if (delay > 0) {
+      await vi.advanceTimersByTimeAsync(delay - 1);
+      expect(run).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync(1);
+    } else await vi.advanceTimersByTimeAsync(0);
+    expect(await pending).toEqual({ result: "ok", auth: "anonymous" });
+    expect(run.mock.calls).toEqual([["anonymous"], ["anonymous"]]);
   });
 
-  test("falls back immediately with an API key after a long rate limit", async () => {
-    const authenticated = new Response("authenticated");
-    const baseFetch = vi
-      .fn<FetchLike>()
-      .mockResolvedValueOnce(rateLimitResponse({ "Retry-After": "3" }))
-      .mockResolvedValueOnce(authenticated);
-    const policy = createAnonymousFirstPolicy({ fetch: baseFetch, apiKey: "secret" });
-    const signal = new AbortController().signal;
-    const init: RequestInit = {
-      method: "POST",
-      headers: { "mcp-session-id": "session" },
-      body: TOOL_CALL_BODY,
-      signal,
-    };
+  test.each([undefined, now + 3_000])("skips probing for deadline %s", async (deadline) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    const run = vi
+      .fn<(route: AuthRoute) => Promise<string>>()
+      .mockRejectedValueOnce(new ExaError("anonymous-rate-limit", deadline))
+      .mockResolvedValue("key");
+    const policy = createAnonymousFirstPolicy(true);
+    expect(await policy.run(run, signal)).toEqual({ result: "key", auth: "api-key" });
+    expect(await policy.run(run, signal)).toEqual({ result: "key", auth: "api-key" });
+    expect(run.mock.calls).toEqual([["anonymous"], ["api-key"], ["api-key"]]);
+  });
 
-    await expect(policy.run(() => policy.fetch(MCP_URL, init))).resolves.toEqual({
-      result: authenticated,
-      auth: "api-key",
+  test.each([undefined, now + 4_000])(
+    "blocks without a key until deadline %s",
+    async (deadline) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(now);
+      const run = vi
+        .fn<(route: AuthRoute) => Promise<string>>()
+        .mockRejectedValueOnce(new ExaError("anonymous-rate-limit", deadline))
+        .mockResolvedValue("ok");
+      const policy = createAnonymousFirstPolicy(false);
+      await expect(policy.run(run, signal)).rejects.toMatchObject({
+        code: "anonymous-rate-limit",
+        retryAt: deadline,
+      });
+      await expect(policy.run(run, signal)).rejects.toThrow("EXA_API_KEY");
+      expect(run).toHaveBeenCalledOnce();
+      await vi.advanceTimersByTimeAsync((deadline ?? now + 1_000) - now);
+      expect(await policy.run(run, signal)).toEqual({ result: "ok", auth: "anonymous" });
+    },
+  );
+
+  test("uses the second 429 deadline and never probes twice", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    const policy = createAnonymousFirstPolicy(false);
+    const run = vi
+      .fn<(route: AuthRoute) => Promise<string>>()
+      .mockRejectedValueOnce(new ExaError("anonymous-rate-limit", now + 1_000))
+      .mockRejectedValueOnce(new ExaError("anonymous-rate-limit", now + 31_000));
+    const pending = expect(policy.run(run, signal)).rejects.toMatchObject({
+      code: "anonymous-rate-limit",
+      retryAt: now + 31_000,
     });
-    expect(baseFetch).toHaveBeenCalledTimes(2);
-    expect(baseFetch.mock.calls[1]?.[0]).toBe(MCP_URL);
-    expect(baseFetch.mock.calls[1]?.[1]?.body).toBe(TOOL_CALL_BODY);
-    expect(baseFetch.mock.calls[1]?.[1]?.signal).toBe(signal);
-    const authenticatedHeaders = new Headers(baseFetch.mock.calls[1]?.[1]?.headers);
-    expect(authenticatedHeaders.get("mcp-session-id")).toBe("session");
-    expect(authenticatedHeaders.get("x-api-key")).toBe("secret");
-  });
-
-  test("falls back immediately when a rate limit has no deadline headers", async () => {
-    const authenticated = new Response("authenticated");
-    const baseFetch = vi
-      .fn<FetchLike>()
-      .mockResolvedValueOnce(rateLimitResponse())
-      .mockResolvedValueOnce(authenticated);
-    const policy = createAnonymousFirstPolicy({ fetch: baseFetch, apiKey: "secret" });
-
-    await expect(
-      policy.run(() => policy.fetch(MCP_URL, { method: "POST", body: TOOL_CALL_BODY })),
-    ).resolves.toEqual({ result: authenticated, auth: "api-key" });
-    expect(baseFetch).toHaveBeenCalledTimes(2);
-  });
-
-  test("blocks without sending again when no API key is available", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-17T00:00:00.000Z"));
-    const baseFetch = vi
-      .fn<FetchLike>()
-      .mockResolvedValueOnce(rateLimitResponse({ "Retry-After": "60" }));
-    const policy = createAnonymousFirstPolicy({ fetch: baseFetch });
-    const call = () =>
-      policy.run(() => policy.fetch(MCP_URL, { method: "POST", body: TOOL_CALL_BODY }));
-
-    await expect(call()).rejects.toThrow(
-      "Exa anonymous MCP rate limit reached. Set EXA_API_KEY from https://dashboard.exa.ai/api-keys or retry later.",
-    );
-    await expect(call()).rejects.toThrow("EXA_API_KEY");
-    expect(baseFetch).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(1_000);
+    await pending;
+    await vi.advanceTimersByTimeAsync(29_000);
+    await expect(policy.run(run, signal)).rejects.toThrow("EXA_API_KEY");
+    expect(run.mock.calls).toEqual([["anonymous"], ["anonymous"]]);
   });
 
   test.each([
-    {
-      name: "HTTP date",
-      headers: { "Retry-After": "Mon, 17 Aug 2026 00:00:04 GMT" },
+    "authenticated-rate-limit",
+    "authentication",
+    "permission",
+    "server",
+    "transport",
+    "tool",
+  ] as const)(
+    "keeps final %s failure without anonymous retry time or another fallback",
+    async (code) => {
+      const final = new ExaError(code);
+      const run = vi
+        .fn<(route: AuthRoute) => Promise<string>>()
+        .mockRejectedValueOnce(new ExaError("anonymous-rate-limit", Date.now() + 10_000))
+        .mockRejectedValueOnce(final);
+      await expect(createAnonymousFirstPolicy(true).run(run, signal)).rejects.toBe(final);
+      expect(run.mock.calls).toEqual([["anonymous"], ["api-key"]]);
+      expect(final.retryAt).toBeUndefined();
     },
-    {
-      name: "reset epoch milliseconds",
-      headers: { "X-RateLimit-Reset": "1786924804000" },
-    },
-    {
-      name: "reset epoch seconds",
-      headers: { "X-RateLimit-Reset": "1786924804" },
-    },
-  ])("uses $name as the anonymous block deadline", async ({ headers }) => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-17T00:00:00.000Z"));
-    const success = new Response("available again");
-    const baseFetch = vi
-      .fn<FetchLike>()
-      .mockResolvedValueOnce(rateLimitResponse(headers))
-      .mockResolvedValueOnce(success);
-    const policy = createAnonymousFirstPolicy({ fetch: baseFetch });
-    const call = () =>
-      policy.run(() => policy.fetch(MCP_URL, { method: "POST", body: TOOL_CALL_BODY }));
+  );
 
-    await expect(call()).rejects.toThrow("EXA_API_KEY");
-    await vi.advanceTimersByTimeAsync(3_999);
-    await expect(call()).rejects.toThrow("EXA_API_KEY");
-    expect(baseFetch).toHaveBeenCalledOnce();
-    await vi.advanceTimersByTimeAsync(1);
-    await expect(call()).resolves.toEqual({ result: success, auth: "anonymous" });
-    expect(baseFetch).toHaveBeenCalledTimes(2);
-  });
-
-  test("uses a one-second block for invalid rate-limit headers without retrying", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-17T00:00:00.000Z"));
-    const success = new Response("available again");
-    const baseFetch = vi
-      .fn<FetchLike>()
-      .mockResolvedValueOnce(
-        rateLimitResponse({ "Retry-After": "invalid", "X-RateLimit-Reset": "invalid" }),
-      )
-      .mockResolvedValueOnce(success);
-    const policy = createAnonymousFirstPolicy({ fetch: baseFetch });
-    const call = () =>
-      policy.run(() => policy.fetch(MCP_URL, { method: "POST", body: TOOL_CALL_BODY }));
-
-    await expect(call()).rejects.toThrow("EXA_API_KEY");
-    expect(baseFetch).toHaveBeenCalledOnce();
-    await vi.advanceTimersByTimeAsync(1_000);
-    await expect(call()).resolves.toEqual({ result: success, auth: "anonymous" });
-  });
-
-  test("uses the second anonymous 429 to block and then falls back", async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-08-17T00:00:00.000Z"));
-    const authenticated = new Response("authenticated");
-    const baseFetch = vi
-      .fn<FetchLike>()
-      .mockResolvedValueOnce(rateLimitResponse({ "Retry-After": "1" }))
-      .mockResolvedValueOnce(rateLimitResponse({ "Retry-After": "30" }))
-      .mockResolvedValueOnce(authenticated);
-    const policy = createAnonymousFirstPolicy({ fetch: baseFetch, apiKey: "secret" });
-
-    const pending = policy.run(() =>
-      policy.fetch(MCP_URL, { method: "POST", body: TOOL_CALL_BODY }),
-    );
-    await vi.advanceTimersByTimeAsync(1_000);
-
-    await expect(pending).resolves.toEqual({ result: authenticated, auth: "api-key" });
-    expect(baseFetch).toHaveBeenCalledTimes(3);
-    expect(new Headers(baseFetch.mock.calls[1]?.[1]?.headers).has("x-api-key")).toBe(false);
-    expect(new Headers(baseFetch.mock.calls[2]?.[1]?.headers).get("x-api-key")).toBe("secret");
-  });
-
-  test("treats authenticated HTTP and network failures as final", async () => {
-    const authenticated429 = rateLimitResponse({ "Retry-After": "1" });
-    const rateLimitedFetch = vi
-      .fn<FetchLike>()
-      .mockResolvedValueOnce(rateLimitResponse({ "Retry-After": "3" }))
-      .mockResolvedValueOnce(authenticated429);
-    const rateLimitedPolicy = createAnonymousFirstPolicy({
-      fetch: rateLimitedFetch,
-      apiKey: "secret",
-    });
-
-    await expect(
-      rateLimitedPolicy.run(() =>
-        rateLimitedPolicy.fetch(MCP_URL, { method: "POST", body: TOOL_CALL_BODY }),
-      ),
-    ).resolves.toEqual({ result: authenticated429, auth: "api-key" });
-    expect(rateLimitedFetch).toHaveBeenCalledTimes(2);
-
-    const serverError = new Response("failed", { status: 503 });
-    const serverErrorFetch = vi
-      .fn<FetchLike>()
-      .mockResolvedValueOnce(rateLimitResponse({ "Retry-After": "3" }))
-      .mockResolvedValueOnce(serverError);
-    const serverErrorPolicy = createAnonymousFirstPolicy({
-      fetch: serverErrorFetch,
-      apiKey: "secret",
-    });
-
-    await expect(
-      serverErrorPolicy.run(() =>
-        serverErrorPolicy.fetch(MCP_URL, { method: "POST", body: TOOL_CALL_BODY }),
-      ),
-    ).resolves.toEqual({ result: serverError, auth: "api-key" });
-    expect(serverErrorFetch).toHaveBeenCalledTimes(2);
-
-    const networkError = new TypeError("network failed");
-    const failingFetch = vi
-      .fn<FetchLike>()
-      .mockResolvedValueOnce(rateLimitResponse({ "Retry-After": "3" }))
-      .mockRejectedValueOnce(networkError);
-    const failingPolicy = createAnonymousFirstPolicy({ fetch: failingFetch, apiKey: "secret" });
-
-    await expect(
-      failingPolicy.run(() =>
-        failingPolicy.fetch(MCP_URL, { method: "POST", body: TOOL_CALL_BODY }),
-      ),
-    ).rejects.toBe(networkError);
-    expect(failingFetch).toHaveBeenCalledTimes(2);
-    expect(networkError.message).not.toContain("secret");
-  });
-
-  test("stops a short retry delay immediately when aborted", async () => {
+  test("cancels a delay with the original reason and never falls back", async () => {
     vi.useFakeTimers();
     const controller = new AbortController();
-    const reason = new Error("cancelled");
-    const baseFetch = vi
-      .fn<FetchLike>()
-      .mockResolvedValueOnce(rateLimitResponse({ "Retry-After": "2" }));
-    const policy = createAnonymousFirstPolicy({ fetch: baseFetch, apiKey: "secret" });
-
-    const pending = policy.run(() =>
-      policy.fetch(MCP_URL, {
-        method: "POST",
-        body: TOOL_CALL_BODY,
-        signal: controller.signal,
-      }),
-    );
+    const reason = new Error("private abort detail");
+    const run = vi
+      .fn<(route: AuthRoute) => Promise<string>>()
+      .mockRejectedValueOnce(new ExaError("anonymous-rate-limit", Date.now() + 2_000));
+    const pending = createAnonymousFirstPolicy(true).run(run, controller.signal);
     await vi.advanceTimersByTimeAsync(0);
     controller.abort(reason);
-
     await expect(pending).rejects.toBe(reason);
     await vi.runAllTimersAsync();
-    expect(baseFetch).toHaveBeenCalledOnce();
+    expect(run).toHaveBeenCalledOnce();
   });
 
-  test("keeps authentication routes isolated across parallel calls", async () => {
-    const fallbackBody = TOOL_CALL_BODY;
-    const anonymousBody = JSON.stringify({
-      jsonrpc: "2.0",
-      id: 2,
-      method: "tools/call",
-      params: { name: "web_fetch_exa", arguments: { urls: ["https://pi.dev"] } },
-    });
-    const baseFetch = vi.fn<FetchLike>(async (input, init) => {
-      expect(input).toBe(MCP_URL);
-      const headers = new Headers(init?.headers);
-      if (init?.body === fallbackBody && !headers.has("x-api-key")) {
-        return rateLimitResponse({ "Retry-After": "3" });
-      }
-      return new Response(init?.body === fallbackBody ? "authenticated" : "anonymous");
-    });
-    const policy = createAnonymousFirstPolicy({ fetch: baseFetch, apiKey: "secret" });
-
-    const [fallback, anonymous] = await Promise.all([
-      policy.run(() => policy.fetch(MCP_URL, { method: "POST", body: fallbackBody })),
-      policy.run(() => policy.fetch(MCP_URL, { method: "POST", body: anonymousBody })),
-    ]);
-
-    expect(fallback.auth).toBe("api-key");
-    expect(anonymous.auth).toBe("anonymous");
-    expect(baseFetch.mock.calls.every(([input]) => input === MCP_URL)).toBe(true);
+  test("clears process-local block state", async () => {
+    const policy = createAnonymousFirstPolicy(false);
+    const run = vi
+      .fn<(route: AuthRoute) => Promise<string>>()
+      .mockRejectedValueOnce(new ExaError("anonymous-rate-limit", Date.now() + 60_000))
+      .mockResolvedValue("ok");
+    await expect(policy.run(run, signal)).rejects.toThrow();
+    policy.clear();
+    expect(await policy.run(run, signal)).toEqual({ result: "ok", auth: "anonymous" });
   });
 });
 
-function rateLimitResponse(headers: Record<string, string | undefined> = {}): Response {
-  const responseHeaders = new Headers();
-  for (const [name, value] of Object.entries(headers)) {
-    if (value !== undefined) {
-      responseHeaders.set(name, value);
-    }
-  }
-  return new Response("rate limited", { status: 429, headers: responseHeaders });
-}
+describe("header-derived retry evidence", () => {
+  test.each([
+    [{ "retry-after": "1" }, now + 1_000],
+    [{ "retry-after": "0" }, now],
+    [{ "retry-after": "Mon, 17 Aug 2026 00:00:04 GMT" }, now + 4_000],
+    [{ "retry-after": "Sun, 16 Aug 2026 00:00:00 GMT" }, now],
+    [{ "x-ratelimit-reset": "1786924804" }, now + 4_000],
+    [{ "x-ratelimit-reset": "1786924804000" }, now + 4_000],
+    [{ "x-ratelimit-reset": "1" }, now],
+    [{ "retry-after": "1", "x-ratelimit-reset": "1786924804000" }, now + 1_000],
+    [{ "retry-after": "invalid", "x-ratelimit-reset": "1786924804000" }, now + 4_000],
+    [{}, undefined],
+    [{ "retry-after": "", "x-ratelimit-reset": " " }, undefined],
+    [{ "retry-after": "-1", "x-ratelimit-reset": "-2" }, undefined],
+    [{ "retry-after": "Infinity", "x-ratelimit-reset": "NaN" }, undefined],
+    [{ "retry-after": "1e309", "x-ratelimit-reset": "1e309" }, undefined],
+    [{ "retry-after": "1e308" }, undefined],
+  ])("parses %j without inventing an upstream deadline", (headers, expected) => {
+    expect(readRetryAt(new Headers(headers as Record<string, string>), now)).toBe(expected);
+  });
+});

@@ -1,8 +1,8 @@
 # v0.2.0 OAuth and Routing Design
 
-**Status:** Accepted for `0.2.0`; not implemented or verified **Target:** `@hudrazine/pi-exa-web@0.2.0`
+**Status:** Accepted for `0.2.0`; PR1 connection/safe-error subset implemented locally, remaining behavior pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
 
-This document defines the behavior and source-backed rationale accepted on 2026-09-09. The [implementation plan](../plans/oauth-routing.md) owns delivery; the [verification specification](../plans/oauth-verification.md) owns acceptance checks. The [current architecture](../architecture.md) describes implemented `0.1.0` behavior. The accepted [OAuth state design](oauth-state.md) defines login, refresh, and persistence. The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is also accepted; implementation and verification remain pending.
+This document defines the behavior and source-backed rationale accepted on 2026-09-09. The [implementation plan](../plans/oauth-routing.md) owns delivery; the [verification specification](../plans/oauth-verification.md) owns acceptance checks. The [current architecture](../architecture.md) describes the checkout, including unreleased PR1 changes over `0.1.0`. The accepted [OAuth state design](oauth-state.md) defines login, refresh, and persistence. The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is also accepted; implementation and verification remain pending.
 
 ## Purpose and Scope
 

@@ -367,7 +367,7 @@ describe("pi-exa-web extension contract", () => {
     expect(expandedUrl).toContain(url);
   });
 
-  test("normalizes only aborted execution errors", async () => {
+  test("normalizes cancellation and hides unknown errors at the Pi boundary", async () => {
     const abortReason = new Error("SDK-specific abort detail");
     const otherError = new Error("network unavailable");
     const controller = new AbortController();
@@ -393,7 +393,10 @@ describe("pi-exa-web extension contract", () => {
     await expect(executeTool(abortedTool, { query: "cancel" }, controller.signal)).rejects.toThrow(
       "Operation aborted",
     );
-    await expect(executeTool(failedTool, { query: "fail" }, undefined)).rejects.toBe(otherError);
+    await expect(executeTool(failedTool, { query: "fail" }, undefined)).rejects.toMatchObject({
+      code: "transport",
+      message: "Could not complete the Exa MCP request.",
+    });
   });
 
   test("renders pending, collapsed, expanded, and error states through Pi's component", () => {

@@ -35,7 +35,7 @@
     "prepublishOnly": "vp run check && vp run test"
   },
   "dependencies": {
-    "@modelcontextprotocol/client": "^2.0.0"
+    "@modelcontextprotocol/client": "2.0.0"
   },
   "devDependencies": {
     "@changesets/changelog-github": "^1.0.1",

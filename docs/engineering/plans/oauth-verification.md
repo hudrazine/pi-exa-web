@@ -1,6 +1,6 @@
 # OAuth and Routing Verification
 
-**Status:** Required checks for accepted `0.2.0` design; not executed for this feature
+**Status:** Required checks for accepted `0.2.0` design; PR1 connection/safe-error subset verified locally, remaining checks pending
 
 This document owns local acceptance cases, runtime coverage, and the Hosted release smoke for the [implementation plan](oauth-routing.md). The accepted [routing design](../proposals/oauth-routing.md), [state design](../proposals/oauth-state.md), and [SQLite lock contract](../design/oauth-state-locking.md) supply the expectations. Design acceptance does not establish implementation or successful verification.
 
@@ -27,6 +27,8 @@ Normal tests use local fake services, fake time for delays, synchronization barr
 | Cancellation composition | Abort during discovery, token access/refresh, lock acquisition, callback wait, anonymous delay, tool HTTP, and shutdown; preserve internal abort reason and never fallback. Shared initialization remains usable by surviving waiters. |
 | Secret handling | Inject sentinel secrets in headers, nested errors, causes, formatter suffixes, authorization URLs, and storage failures; none appears in Pi errors/details, status, logs, or persisted conversation records. Successful Exa text contract is tested separately. |
 | Pi modes and package | TUI login and cancellation; other modes refuse interactive login before side effects but use saved credentials; loader registration includes management/shutdown; source-only npm artifact. |
+
+PR1 coverage lives in `tests/exa-mcp-client.test.ts` (real SDK/local HTTP, per-route connections, safe failures, cancellation, session recovery, shutdown, Pi loader/rendering and persisted error records), `tests/anonymous-first.test.ts` (existing probe/block behavior and header parsing), and `tests/index.test.ts` (public Pi contract). OAuth, new cooldown/probe behavior, authenticated tool-text classifiers, and all lock/state cases below remain pending.
 
 ## Lock and State Cases
 

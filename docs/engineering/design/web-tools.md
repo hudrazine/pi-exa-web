@@ -1,6 +1,6 @@
 # Pi Tool Contract
 
-The implemented `0.1.0` extension registers `web_search` and `web_fetch`. They expose Exa search and single-page text retrieval through Pi; MCP types and internal modules are not public APIs. Authentication is defined by the [anonymous-first policy](anonymous-first.md).
+The current extension registers `web_search` and `web_fetch`. They expose Exa search and single-page text retrieval through Pi; MCP types and internal modules are not public APIs. Authentication is defined by the [anonymous-first policy](anonymous-first.md).
 
 ## Inputs and Results
 
@@ -35,6 +35,8 @@ Errors show a concise collapsed summary and expanded error text. Cancellation is
 
 MCP tool errors, SDK failures, and network failures are thrown so Pi marks the call as failed. Missing credentials after an anonymous limit produce a package-owned message naming `EXA_API_KEY`, linking to the Exa key dashboard, and suggesting retry later. Cancellation and connection cleanup follow the [lifecycle contract](../architecture.md#connection-and-cancellation).
 
-API keys, request headers, and full request objects must not appear in error messages. **Known implementation gap:** the client propagates upstream MCP error text and SDK/network exceptions, while the renderer only sanitizes terminal display. Secret-free error output is therefore not established. The [OAuth and routing proposal](../proposals/oauth-routing.md#failure-classification-and-safe-output) specifies package-owned error templates and allowlisted metadata, but that protection is not implemented. Raw error propagation is an implementation limitation, not the safety contract.
+Unreleased PR1 replaces raw upstream errors with package-owned messages and private failure codes: `anonymous-rate-limit`, `authenticated-rate-limit`, `authentication`, `permission`, `server`, `transport`, `tool`, and `lifecycle`. Errors retain only the final failure and an optional header-derived `retryAt` in epoch milliseconds. HTTP observation supplies status evidence; SDK protocol/invalid-result errors, MCP `isError`, and non-text results become safe tool errors. Authenticated tool-text 402/429 classification remains T6 work.
+
+Pi receives no raw response bodies, headers, exceptions, credential-bearing upstream URLs, or causes. Unknown exceptions are sanitized at the adapter boundary too. Abort reasons remain internal; Pi receives `Operation aborted` without a cause and renders `Cancelled`. Successful text preservation is tested separately from error secrecy. The remaining OAuth/storage classifications belong to the [accepted design](../proposals/oauth-routing.md#failure-classification-and-safe-output).
 
 The schemas and rendering implementation are in [`src/register-tools.ts`](../../../src/register-tools.ts); text extraction is in [`src/exa-mcp-client.ts`](../../../src/exa-mcp-client.ts). See [quality criteria](../quality.md) for verification responsibilities.
