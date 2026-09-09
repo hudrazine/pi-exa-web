@@ -1,12 +1,12 @@
 # v0.2.0 OAuth and Routing Implementation Plan
 
-**Status:** PR1 merged; PR2 state foundation implemented locally, OS CI pending; remaining stages pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
+**Status:** PR1/PR2 merged; PR3 anonymous/API-key routing implemented locally, CI verified; OAuth stages pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
 
 This plan defines delivery order and completion for the OAuth feature accepted on 2026-09-09. The accepted [routing design](../proposals/oauth-routing.md) and [state design](../proposals/oauth-state.md) define its behavior; the [verification specification](oauth-verification.md) owns acceptance checks. Acceptance includes both strategies and the OAuth lifecycle, alongside the previously accepted [SQLite coordination decision](../decisions/sqlite-state-locking.md) and its lock contract. Full feature implementation and verification remain pending.
 
 ## Scope and Dependencies
 
-The [current architecture](../architecture.md) includes unreleased PR1: safe errors and route-specific connections, with anonymous-first intent execution and `EXA_API_KEY` only. There are no saved OAuth credentials or settings to migrate. Existing tool, renderer, rate-limit, concurrency, and lifecycle tests provide the regression baseline.
+The [current architecture](../architecture.md) includes unreleased PR1/PR2 foundations and local PR3 saved strategies, anonymous probes/cooldown and credit fallback. OAuth integration remains pending, with no credential migration planned. Existing tool, renderer, rate-limit, concurrency, and lifecycle tests provide the regression baseline.
 
 The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is accepted, including the target Node.js minimum; [package.json](../../../package.json) defines the implemented runtime requirement.
 
@@ -29,19 +29,20 @@ The following stages implement the accepted design. Each stage uses the [verific
 
 ### 2. Anonymous and API-key Routing
 
-- [ ] Implement both strategies, authenticated-route resolution, classifiers, one-second no-header probe and fixed cooldown, header-derived deadlines, and retry budgets from the design.
-- [ ] Retain initialization-time API-key reading and attach credentials only to their route connection.
-- [ ] Verify accepted no-header probing, cooldown bypass without usable credentials, and route-specific connections against their design contracts; retain other current regression requirements.
+- [x] Implement both strategies for anonymous/API-key access, classifiers, one-second no-header probe and fixed cooldown, header-derived deadlines and retry budgets. T9 adds OAuth resolution.
+- [x] Retain initialization-time API-key reading and attach credentials only to their route connection.
+- [x] Verify anonymous/API-key routing, probe/cooldown and connection regression contracts locally. PR3 four-job CI passed for `189ab6a`.
 
 ### 3. Persistent State and OAuth
 
-- [x] Raise `engines.node` to `>=24.15.0` and implement OAuth exclusion using separate SQLite connections without a local mutex, and revisioned OAuth JSON transactions. Implement settings as validated last-write-wins JSON replacement without a revision or lock. PR2 OS CI verification remains pending.
-- [ ] Implement per-call settings reads, OAuth revision observation, staged login, non-interactive refresh including 401 recovery, and local logout.
+- [x] Raise `engines.node` to `>=24.15.0` and implement OAuth exclusion using separate SQLite connections without a local mutex, and revisioned OAuth JSON transactions. Implement settings as validated last-write-wins JSON replacement without a revision or lock. PR2 merged after all four CI jobs passed.
+- [x] Implement per-call settings snapshots and `/exa strategy` display/replacement.
+- [ ] Implement OAuth revision observation, staged login, non-interactive refresh including 401 recovery, and local logout.
 
 ### 4. Pi Integration
 
 - [ ] Register `/exa` management commands with the local-TUI login boundary, cancellable callback UI, and browser-opening fallback.
-- [ ] Extend safe route/fallback details and rendering; preserve tool schemas and successful text.
+- [x] Extend anonymous/API-key route/fallback details and rendering; preserve tool schemas and successful text. T9 adds OAuth display.
 - [ ] Connect Pi shutdown/reload to login, active operations, connections, and lock-wait cleanup.
 
 ### 5. Release Preparation

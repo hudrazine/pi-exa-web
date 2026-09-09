@@ -31,7 +31,7 @@ export function createStateStore() {
   }
   const readSettings = () =>
     boundary(() =>
-      read("settings.json", parseSettings, { version: 1, strategy: "anonymous-first" }),
+      read<Settings>("settings.json", parseSettings, { version: 1, strategy: "anonymous-first" }),
     );
   const readOAuth = () =>
     boundary(() => read("oauth.json", parseOAuth, { version: 1, revision: 0, credentials: null }));

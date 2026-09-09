@@ -26,6 +26,7 @@ function captureExtension(register: CallableFunction): {
   const tools: ToolDefinition[] = [];
   const handlers = new Map<string, CallableFunction>();
   const pi = {
+    registerCommand: vi.fn(),
     registerTool(tool: ToolDefinition) {
       tools.push(tool);
     },
@@ -298,6 +299,54 @@ describe("pi-exa-web extension contract", () => {
     expect(fetched).toContain("✓ Fetch complete · API key");
     expect(fetched).not.toContain("page body");
   });
+
+  test.each(["web_search", "web_fetch"])(
+    "keeps %s fallback metadata out of success text and shows it only expanded",
+    async (name) => {
+      for (const fallback of [
+        { from: "anonymous", to: "api-key", reason: "anonymous-rate-limit" },
+        { from: "api-key", to: "anonymous", reason: "credits-exhausted" },
+      ] as const) {
+        const client: ExaWebClient = {
+          search: async () => ({ text: "unchanged result", auth: fallback.to, fallback }),
+          fetch: async () => ({ text: "unchanged result", auth: fallback.to, fallback }),
+        };
+        const tool = requireTool(
+          captureTools((pi: ExtensionAPI) => registerExaWebTools(pi, client)),
+          name,
+        );
+        const value = await executeTool(
+          tool,
+          name === "web_search" ? { query: "q" } : { url: "https://example.test" },
+          undefined,
+        );
+        expect(value).toMatchObject({
+          content: [{ type: "text", text: "unchanged result" }],
+          details: { auth: fallback.to, fallback },
+        });
+        const result = {
+          content: [{ type: "text", text: "unchanged result" }],
+          details: { auth: fallback.to, fallback },
+        };
+        expect(renderResult(tool, result, { expanded: false })).not.toContain("Fallback:");
+        expect(renderResult(tool, result, { expanded: true })).toContain(
+          fallback.reason === "anonymous-rate-limit"
+            ? "Fallback: anonymous → API key · anonymous rate limit"
+            : "Fallback: API key → anonymous · account credits exhausted",
+        );
+        expect(
+          renderResult(
+            tool,
+            {
+              ...result,
+              details: { auth: fallback.to, fallback: { ...fallback, reason: "SECRET" } },
+            },
+            { expanded: true },
+          ),
+        ).not.toContain("SECRET");
+      }
+    },
+  );
 
   test("renders concise errors, expanded safe detail, cancellation, and missing text", () => {
     const search = requireTool(captureTools(exaWebExtension), "web_search");

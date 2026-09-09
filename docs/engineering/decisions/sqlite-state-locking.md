@@ -1,6 +1,6 @@
 # SQLite Coordination for Local State
 
-**Status:** Accepted for `0.2.0`, amended on 2026-09-09; PR2 foundation implemented locally, OS CI and OAuth integration pending
+**Status:** Accepted for `0.2.0`, amended on 2026-09-09; PR2 foundation merged with OS CI verified; OAuth integration pending
 
 ## Original Decision — Partially Superseded
 
@@ -26,8 +26,8 @@ The OAuth state transactions require exclusion throughout read/refresh/write, no
 
 ## Consequences and Validation
 
-Implementation update: PR2 provides private SQLite exclusion and JSON replacement. Local fixtures cover holding ownership across awaits and JSON commit, contention, process-death recovery and cleanup. This verifies that part of the composition inference above; remote refresh/token rotation and OS CI remain separate obligations in the [verification specification](../plans/oauth-verification.md).
+Implementation update: PR2 provides private SQLite exclusion and JSON replacement. Local fixtures cover holding ownership across awaits and JSON commit, contention, process-death recovery and cleanup. This verifies that part of the composition inference above; PR2's [four-job CI passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016), while remote refresh/token rotation remain separate obligations in the [verification specification](../plans/oauth-verification.md).
 
 [Node 24.15](https://nodejs.org/download/release/v24.15.0/docs/api/sqlite.html) supplies synchronous database operations. Accept brief synchronous local I/O for coordination, with asynchronous contention waits and JSON I/O. Slow filesystem calls can block Pi's event loop and exceed the acquisition budget; the budget is not a hard response-time guarantee. Add no Worker without a concrete responsiveness problem.
 
-There is no separate native addon build/ABI requirement, but the release-candidate API, Pi loader, process-death recovery, and supported local filesystems still need the [runtime and lock checks](../plans/oauth-verification.md#lock-and-state-cases). The protocol does not support network filesystems or unlocked OAuth fallback when SQLite is unavailable; settings replacement does not use SQLite. This decision originally accepted only coordination. The surrounding [OAuth and routing design](../proposals/oauth-routing.md) and [state lifecycle](../proposals/oauth-state.md) were subsequently accepted on 2026-09-09; implementation and verification remain pending.
+There is no separate native addon build/ABI requirement, but the release-candidate API, Pi loader, process-death recovery, and supported local filesystems still need the [runtime and lock checks](../plans/oauth-verification.md#lock-and-state-cases). The protocol does not support network filesystems or unlocked OAuth fallback when SQLite is unavailable; settings replacement does not use SQLite. This decision originally accepted only coordination. The surrounding [OAuth and routing design](../proposals/oauth-routing.md) and [state lifecycle](../proposals/oauth-state.md) were subsequently accepted on 2026-09-09; OAuth lifecycle implementation and verification remain pending.

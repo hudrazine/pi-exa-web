@@ -1,6 +1,6 @@
 # OAuth and Routing Verification
 
-**Status:** PR1 connection/safe-error subset and PR2 private storage verified locally; OS CI and OAuth integration pending
+**Status:** PR1/PR2 merged with PR2 four-job CI verified; PR3 routing/commands verified locally, CI verified; OAuth integration pending
 
 This document owns local acceptance cases, runtime coverage, and the Hosted release smoke for the [implementation plan](oauth-routing.md). The accepted [routing design](../proposals/oauth-routing.md), [state design](../proposals/oauth-state.md), and [SQLite lock contract](../design/oauth-state-locking.md) supply the expectations. Design acceptance does not establish implementation or successful verification.
 
@@ -28,13 +28,24 @@ Normal tests use local fake services, fake time for delays, synchronization barr
 | Secret handling | Inject sentinel secrets in headers, nested errors, causes, formatter suffixes, authorization URLs, and storage failures; none appears in Pi errors/details, status, logs, or persisted conversation records. Successful Exa text contract is tested separately. |
 | Pi modes and package | TUI login and cancellation; other modes refuse interactive login before side effects but use saved credentials; loader registration includes management/shutdown; source-only npm artifact. |
 
-PR1 coverage lives in `tests/exa-mcp-client.test.ts` (real SDK/local HTTP, per-route connections, safe failures, cancellation, session recovery, shutdown, Pi loader/rendering and persisted error records), `tests/anonymous-first.test.ts` (existing probe/block behavior and header parsing), and `tests/index.test.ts` (public Pi contract). PR2 lock/state coverage is mapped below. OAuth operations, new cooldown/probe behavior and authenticated tool-text classifiers remain pending.
+PR1 connection and safe-error regressions remain in `tests/exa-mcp-client.test.ts`, and the public Pi contract remains in `tests/index.test.ts`. PR3 extends them as follows:
+
+| PR3 cases | Test source |
+| --- | --- |
+| Probe timing, final deadline, fixed cooldown, concurrent deadlines, reset, missing key, one fallback and cancellation | `tests/anonymous-first.test.ts` with fake time and synchronization barriers |
+| Both tools/strategies with or without a key, exact 402/429 boundaries and near misses, successful text preservation, concurrent auth/fallback metadata, session recovery budget composition | `tests/exa-mcp-client.test.ts` with the real SDK and local HTTP fixture |
+| Settings snapshots and another process's change on the next call | `tests/exa-mcp-client.test.ts` and the existing settings worker |
+| Optional fallback details and collapsed/expanded display | `tests/index.test.ts` |
+| `/exa` registration, invalid arguments, commit-before-notification, safe replacement failures, shutdown during saving, corrupt settings before network | `tests/strategy-command.test.ts` with the real Pi loader |
+| Settings usable with SQLite disabled; settings/OAuth errors excluded from rendering, logs and persisted sessions | `tests/state-store.test.ts` child fixture and `tests/state-loader.test.ts` |
+
+PR3 local evidence (2026-09-09): Linux x64 passed all 211 tests on Node 24.19.0 and 24.15.0; the minimum run asserted its actual runtime/platform/architecture. Formatting, lint and types passed. Minimum validation used `vp env use 24.15.0` then built-in `vp check` / `vp test`; `vp env exec` alone did not select the test runtime. The override was removed after validation. `vp pm pack -- --dry-run --json` listed only LICENSE, package metadata, README and required TypeScript source. The suite includes real Pi loader and persisted-error checks. [PR3's four CI jobs passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34329770811) for `189ab6a`, including macOS arm64 and Windows x64. OAuth operations and OAuth-specific classification/retry composition remain pending.
 
 ## Lock and State Cases
 
-PR2 coverage: `tests/state-store.test.ts` exercises L1–L2 with real child processes and SQLite, the JSON portion of L5, and settings replacement. `tests/oauth-lock.test.ts` covers L3 with controlled clocks and dependency failures. `tests/state-loader.test.ts` verifies SQLite through a test extension loaded by Pi's actual loader, the unchanged production entry, safe storage errors through rendering/SessionManager, and CI runtime identity. L4 and remote rotation in L5 remain with T8/T9. The four OS/runtime CI jobs are configured but have not yet supplied results for this revision.
+PR2 coverage: `tests/state-store.test.ts` exercises L1–L2 with real child processes and SQLite, the JSON portion of L5, and settings replacement. `tests/oauth-lock.test.ts` covers L3 with controlled clocks and dependency failures. `tests/state-loader.test.ts` verifies SQLite through a test extension loaded by Pi's actual loader, the production entry and strategy command, safe storage errors through rendering/SessionManager, and CI runtime identity. L4 and remote rotation in L5 remain with T8/T9. PR2's four OS/runtime CI jobs passed before merge; PR3 also passed its four-job CI for `189ab6a`.
 
-PR2 local evidence (2026-09-09): Linux x64 passed all 156 tests on Node 24.19.0 and 24.15.0, with test-process runtime assertions. Formatting, lint and types passed on both runtimes. The minimum run used `vp env use 24.15.0` followed by built-in `vp check` / `vp test`; development used `vp run check` / `vp run test`. `vp pm pack -- --dry-run --json` listed only LICENSE, package metadata, README and required `src/*.ts`. Real Pi loader and persisted storage-error checks are included in the suite. macOS/Windows and GitHub CI execution remain unverified; this evidence does not complete T11 or mark PR2 merged.
+PR2 local evidence (2026-09-09): Linux x64 passed all 156 tests on Node 24.19.0 and 24.15.0, with test-process runtime assertions. Formatting, lint and types passed on both runtimes. The minimum run used `vp env use 24.15.0` followed by built-in `vp check` / `vp test`; development used `vp run check` / `vp run test`. `vp pm pack -- --dry-run --json` listed only LICENSE, package metadata, README and required `src/*.ts`. Real Pi loader and persisted storage-error checks are included in the suite. [All four CI jobs passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016) for `5f24625`, including macOS arm64 and Windows x64. [PR #16](https://github.com/hudrazine/pi-exa-web/pull/16) merged as `d9b84f9`; T4/T5/T11 are Done.
 
 Verify the accepted SQLite lock contract. Reuse feature fixtures for L4–L5; each obligation needs one test location.
 

@@ -8,6 +8,7 @@ import {
 import { Text, stripTerminalSequences, truncateToWidth } from "@earendil-works/pi-tui";
 import { type Static, Type } from "typebox";
 import { safeError } from "./errors.ts";
+import type { AuthRoute, Fallback } from "./anonymous-first.ts";
 
 const searchParameters = Type.Object({
   query: Type.String({ description: "Natural-language web search query" }),
@@ -33,14 +34,15 @@ const fetchParameters = Type.Object({
 
 type SearchParameters = Static<typeof searchParameters>;
 type FetchParameters = Static<typeof fetchParameters>;
-type AuthRoute = "anonymous" | "api-key";
 
 interface ExaWebResult {
   text: string;
   auth: AuthRoute;
+  fallback?: Fallback;
 }
 
 interface SearchDetails {
+  fallback?: Fallback;
   provider: "exa";
   operation: "search";
   auth: AuthRoute;
@@ -49,6 +51,7 @@ interface SearchDetails {
 }
 
 interface FetchDetails {
+  fallback?: Fallback;
   provider: "exa";
   operation: "fetch";
   auth: AuthRoute;
@@ -76,6 +79,7 @@ export function registerExaWebTools(pi: ExtensionAPI, client: ExaWebClient): voi
           provider: "exa",
           operation: "search",
           auth: result.auth,
+          ...(result.fallback === undefined ? {} : { fallback: result.fallback }),
           query: parameters.query,
           ...(parameters.numResults === undefined
             ? {}
@@ -115,6 +119,7 @@ export function registerExaWebTools(pi: ExtensionAPI, client: ExaWebClient): voi
           provider: "exa",
           operation: "fetch",
           auth: result.auth,
+          ...(result.fallback === undefined ? {} : { fallback: result.fallback }),
           url: parameters.url,
           ...(parameters.maxCharacters === undefined
             ? {}
@@ -175,6 +180,8 @@ function renderWebResult(
     `✓ ${operation} complete${auth === undefined ? "" : ` · ${auth}`}`,
   );
   if (options.expanded) {
+    const fallback = readFallback(result.details);
+    if (fallback !== undefined) text += `\n${theme.fg("muted", fallback)}`;
     if (content !== "") {
       text += `\n${theme.fg("toolOutput", content)}`;
     }
@@ -202,6 +209,20 @@ function readAuthRoute(details: unknown): "anonymous" | "API key" | undefined {
     return "anonymous";
   }
   return auth === "api-key" ? "API key" : undefined;
+}
+
+function readFallback(details: unknown): string | undefined {
+  if (typeof details !== "object" || details === null) return undefined;
+  const fallback: unknown = Reflect.get(details, "fallback");
+  if (typeof fallback !== "object" || fallback === null) return undefined;
+  const from = readAuthRoute({ auth: Reflect.get(fallback, "from") });
+  const to = readAuthRoute({ auth: Reflect.get(fallback, "to") });
+  const reason: unknown = Reflect.get(fallback, "reason");
+  if (from === "anonymous" && to === "API key" && reason === "anonymous-rate-limit")
+    return "Fallback: anonymous → API key · anonymous rate limit";
+  if (from === "API key" && to === "anonymous" && reason === "credits-exhausted")
+    return "Fallback: API key → anonymous · account credits exhausted";
+  return undefined;
 }
 
 async function runToolOperation<T>(

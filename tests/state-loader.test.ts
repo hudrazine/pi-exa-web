@@ -57,6 +57,10 @@ test("Pi loads the package and real SQLite storage; storage secrets never enter 
       join(dir, "exa-web", "oauth.json"),
       `{"token":"${sentinel}","cause":{"url":"https://user:${sentinel}@example.test"}}`,
     );
+    await writeFile(
+      join(dir, "exa-web", "settings.json"),
+      `{"version":999,"strategy":"${sentinel}"}`,
+    );
     const session = SessionManager.create(dir, dir);
     session.appendMessage({
       role: "assistant",
@@ -76,8 +80,10 @@ test("Pi loads the package and real SQLite storage; storage secrets never enter 
       timestamp: Date.now(),
     });
     initTheme("dark", false);
-    for (const name of ["web_search", "web_fetch"]) {
-      const tool = extension.tools.get(name)!.definition;
+    for (const [current, name] of [extension, production.extensions[0]].flatMap((item) =>
+      ["web_search", "web_fetch"].map((toolName) => [item, toolName] as const),
+    )) {
+      const tool = current.tools.get(name)!.definition;
       const args = name === "web_search" ? { query: "fixture" } : { url: "https://example.test" };
       const failure: unknown = await Reflect.apply(Reflect.get(tool, "execute"), tool, [
         "fixture",

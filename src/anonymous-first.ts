@@ -1,48 +1,67 @@
-import { ExaError } from "./errors.ts";
+import { AnonymousRateLimitError, ExaError } from "./errors.ts";
+import type { Strategy } from "./state-schema.ts";
 
 export type AuthRoute = "anonymous" | "api-key";
+export interface Fallback {
+  from: AuthRoute;
+  to: AuthRoute;
+  reason: "anonymous-rate-limit" | "credits-exhausted";
+}
 
 export function createAnonymousFirstPolicy(hasApiKey: boolean) {
   let blockedUntil = 0;
-  let blockedRetryAt: number | undefined;
-
   return {
-    async run<T>(operation: (route: AuthRoute) => Promise<T>, signal: AbortSignal) {
+    async run<T>(
+      operation: (route: AuthRoute) => Promise<T>,
+      signal: AbortSignal,
+      strategy: Strategy = "anonymous-first",
+    ) {
       signal.throwIfAborted();
-      const authenticated = async (retryAt?: number) => {
-        signal.throwIfAborted();
-        if (!hasApiKey) throw new ExaError("anonymous-rate-limit", retryAt);
-        return { result: await operation("api-key"), auth: "api-key" as const };
-      };
-      if (blockedUntil > Date.now()) return authenticated(blockedRetryAt);
-      blockedUntil = 0;
-      blockedRetryAt = undefined;
-
-      let limit: ExaError;
-      try {
-        return { result: await operation("anonymous"), auth: "anonymous" as const };
-      } catch (error) {
-        signal.throwIfAborted();
-        if (!(error instanceof ExaError) || error.code !== "anonymous-rate-limit") throw error;
-        limit = error;
-      }
-      if (limit.retryAt !== undefined && limit.retryAt - Date.now() <= 2_000) {
-        await abortableDelay(Math.max(0, limit.retryAt - Date.now()), signal);
-        try {
-          return { result: await operation("anonymous"), auth: "anonymous" as const };
-        } catch (error) {
+      async function anonymous(): Promise<T> {
+        let probed = false;
+        for (;;) {
           signal.throwIfAborted();
-          if (!(error instanceof ExaError) || error.code !== "anonymous-rate-limit") throw error;
-          limit = error;
+          try {
+            const result = await operation("anonymous");
+            signal.throwIfAborted();
+            blockedUntil = 0;
+            return result;
+          } catch (error) {
+            signal.throwIfAborted();
+            if (!(error instanceof AnonymousRateLimitError)) throw error;
+            const delay =
+              error.retryAt === undefined ? 1_000 : Math.max(0, error.retryAt - Date.now());
+            if (probed || delay > 2_000) throw error;
+            probed = true;
+            await abortableDelay(delay, signal);
+          }
         }
       }
-      blockedRetryAt = limit.retryAt;
-      blockedUntil = limit.retryAt ?? Date.now() + 1_000;
-      return authenticated(limit.retryAt);
+      async function execute(route: AuthRoute): Promise<T> {
+        signal.throwIfAborted();
+        return route === "anonymous" ? anonymous() : operation(route);
+      }
+      const primary: AuthRoute =
+        hasApiKey && (strategy === "authenticated-first" || blockedUntil > Date.now())
+          ? "api-key"
+          : "anonymous";
+      try {
+        return { result: await execute(primary), auth: primary };
+      } catch (error) {
+        signal.throwIfAborted();
+        if (!(error instanceof ExaError)) throw error;
+        let fallback: Fallback;
+        if (primary === "anonymous" && error instanceof AnonymousRateLimitError && hasApiKey) {
+          blockedUntil = Math.max(blockedUntil, error.retryAt ?? error.observedAt + 1_000);
+          fallback = { from: primary, to: "api-key", reason: "anonymous-rate-limit" };
+        } else if (primary === "api-key" && error.code === "credits-exhausted") {
+          fallback = { from: primary, to: "anonymous", reason: "credits-exhausted" };
+        } else throw error;
+        return { result: await execute(fallback.to), auth: fallback.to, fallback };
+      }
     },
     clear() {
       blockedUntil = 0;
-      blockedRetryAt = undefined;
     },
   };
 }

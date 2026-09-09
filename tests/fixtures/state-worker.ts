@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import { syncBuiltinESMExports } from "node:module";
 import { createStateStore } from "../../src/state-store.ts";
+import { createExaMcpClient } from "../../src/exa-mcp-client.ts";
 
 function waitFor(command: string): Promise<void> {
   return new Promise((resolve) => {
@@ -34,8 +35,10 @@ async function main() {
         strategy: process.argv[3] === "anonymous-first" ? "anonymous-first" : "authenticated-first",
       });
     } else if (mode === "no-sqlite") {
-      await store.writeSettings({ version: 1, strategy: "authenticated-first" });
-      await store.readSettings();
+      const client = createExaMcpClient();
+      await client.setStrategy("authenticated-first");
+      if ((await client.getStrategy()) !== "authenticated-first") throw new Error("Wrong strategy");
+      await client.close();
       try {
         await store.updateOAuth(async () => null);
       } catch (error) {

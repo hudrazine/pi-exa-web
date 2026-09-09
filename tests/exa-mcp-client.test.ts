@@ -5,6 +5,7 @@ import {
   type ServerResponse,
 } from "node:http";
 import { once } from "node:events";
+import { fork } from "node:child_process";
 import { inspect } from "node:util";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -15,10 +16,11 @@ import {
   initTheme,
   ToolExecutionComponent,
 } from "@earendil-works/pi-coding-agent";
-import { afterEach, describe, expect, test, vi } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import packageJson from "../package.json" with { type: "json" };
 import { createExaMcpClient } from "../src/exa-mcp-client.ts";
 import { ExaError } from "../src/errors.ts";
+import { createStateStore } from "../src/state-store.ts";
 
 interface CapturedRequest {
   method: string;
@@ -49,11 +51,18 @@ interface FixtureOptions {
 }
 
 const fixtures: Fixture[] = [];
+let agentDir: string;
+beforeEach(async () => {
+  agentDir = await mkdtemp(join(tmpdir(), "pi-exa-routing-"));
+  vi.stubEnv("PI_CODING_AGENT_DIR", agentDir);
+});
 
 afterEach(async () => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   await Promise.all(fixtures.splice(0).map((fixture) => fixture.close()));
+  vi.unstubAllEnvs();
+  await rm(agentDir, { recursive: true, force: true });
 });
 
 describe("Exa MCP client", () => {
@@ -227,7 +236,7 @@ describe("Exa MCP client", () => {
     ]);
     await client.close();
 
-    expect(search).toEqual({ text: "fallback result", auth: "api-key" });
+    expect(search).toEqual({ text: "fallback result", auth: "api-key", fallback: rateFallback });
     expect(fetch).toEqual({ text: "anonymous page", auth: "anonymous" });
     const searchRequests = fixture.requests.filter(
       (request) =>
@@ -343,6 +352,10 @@ function invoke(
     : client.fetch({ url: "https://example.com" }, signal);
 }
 const success: ToolReply = { result: { content: [{ type: "text", text: "ok" }] } };
+const rateFallback = { from: "anonymous", to: "api-key", reason: "anonymous-rate-limit" };
+const errorResult = (text: string) => ({
+  result: { isError: true, content: [{ type: "text", text }] },
+});
 const sentinel = "PRIVATE_SENTINEL_836192";
 
 describe.each(operations)("%s route and failure boundaries", (operation) => {
@@ -428,6 +441,7 @@ describe.each(operations)("%s route and failure boundaries", (operation) => {
       expect(await invoke(client, operation)).toEqual({
         text: "ok",
         auth: authenticated ? "api-key" : "anonymous",
+        ...(authenticated ? { fallback: rateFallback } : {}),
       });
       const calls = fixture.requests.filter((request) => request.message?.method === "tools/call");
       expect(calls).toHaveLength(authenticated ? 3 : 2);
@@ -460,7 +474,11 @@ describe.each(operations)("%s route and failure boundaries", (operation) => {
       return { status: 429, headers: { "retry-after": "0" } };
     });
     const client = createExaMcpClient({ endpoint: fixture.endpoint, apiKey: sentinel });
-    expect(await invoke(client, operation)).toEqual({ text: "ok", auth: "api-key" });
+    expect(await invoke(client, operation)).toEqual({
+      text: "ok",
+      auth: "api-key",
+      fallback: rateFallback,
+    });
     expect(anonymous).toBe(3);
     expect(countRequests(fixture, "tools/call")).toBe(4);
     await client.close();
@@ -480,36 +498,53 @@ describe.each(operations)("%s route and failure boundaries", (operation) => {
 
   test.each([
     {
-      result: {
-        isError: true,
-        content: [{ type: "text", text: `web_search_exa error (402): ${sentinel}` }],
+      reply: {
+        result: {
+          isError: true,
+          content: [{ type: "text", text: `web_search_exa error (402): ${sentinel}` }],
+        },
       },
+      codes: { search: "credits-exhausted", fetch: "tool" },
     },
     {
-      result: {
-        isError: true,
-        content: [{ type: "text", text: `web_fetch_exa error (429): ${sentinel}` }],
+      reply: {
+        result: {
+          isError: true,
+          content: [{ type: "text", text: `web_fetch_exa error (429): ${sentinel}` }],
+        },
       },
+      codes: { search: "tool", fetch: "authenticated-rate-limit" },
     },
     {
-      error: {
-        code: -32000,
-        message: sentinel,
-        data: { cause: { headers: { authorization: sentinel } } },
+      reply: {
+        error: {
+          code: -32000,
+          message: sentinel,
+          data: { cause: { headers: { authorization: sentinel } } },
+        },
       },
+      codes: { search: "tool", fetch: "tool" },
     },
-    { result: { content: [{ type: "image", data: sentinel, mimeType: "image/png" }] } },
-  ])("sanitizes MCP failures without classifying text or replaying: %j", async (reply) => {
-    const fixture = await createFixture((request) =>
-      request.headers["x-api-key"] === undefined ? { status: 429 } : reply,
-    );
-    const client = createExaMcpClient({ endpoint: fixture.endpoint, apiKey: sentinel });
-    const error = await invoke(client, operation).catch((failure: unknown) => failure);
-    expect(error).toMatchObject({ code: "tool" });
-    expect(inspect(error, { depth: 10 })).not.toContain(sentinel);
-    expect(countRequests(fixture, "tools/call")).toBe(2);
-    await client.close();
-  });
+    {
+      reply: { result: { content: [{ type: "image", data: sentinel, mimeType: "image/png" }] } },
+      codes: { search: "tool", fetch: "tool" },
+    },
+  ])(
+    "sanitizes MCP failures and keeps authenticated classification final after fallback: %j",
+    async ({ reply, codes }) => {
+      const fixture = await createFixture((request) =>
+        request.headers["x-api-key"] === undefined
+          ? { status: 429, headers: { "retry-after": "30" } }
+          : reply,
+      );
+      const client = createExaMcpClient({ endpoint: fixture.endpoint, apiKey: sentinel });
+      const error = await invoke(client, operation).catch((failure: unknown) => failure);
+      expect(error).toMatchObject({ code: codes[operation] });
+      expect(inspect(error, { depth: 10 })).not.toContain(sentinel);
+      expect(countRequests(fixture, "tools/call")).toBe(2);
+      await client.close();
+    },
+  );
 
   test("does not replay a dropped tool response", async () => {
     const fixture = await createFixture(() => ({ disconnect: true }));
@@ -532,7 +567,248 @@ describe.each(operations)("%s route and failure boundaries", (operation) => {
   });
 });
 
+describe.each(operations)("%s saved routing and classifiers", (operation) => {
+  const toolName = operation === "search" ? "web_search_exa" : "web_fetch_exa";
+  const otherName = operation === "search" ? "web_fetch_exa" : "web_search_exa";
+
+  test.each(["anonymous-first", "authenticated-first"] as const)(
+    "selects %s with and without a key",
+    async (strategy) => {
+      await createStateStore().writeSettings({ version: 1, strategy });
+      for (const apiKey of [undefined, `  ${sentinel}  `]) {
+        const fixture = await createFixture(() => success);
+        const client = createExaMcpClient({ endpoint: fixture.endpoint, apiKey });
+        const key = strategy === "authenticated-first" && apiKey !== undefined;
+        expect(await invoke(client, operation)).toEqual({
+          text: "ok",
+          auth: key ? "api-key" : "anonymous",
+        });
+        expect(countRequests(fixture, "initialize")).toBe(1);
+        expect(countRequests(fixture, "tools/call")).toBe(1);
+        expect(
+          fixture.requests.every(
+            (request) => request.headers["x-api-key"] === (key ? sentinel : undefined),
+          ),
+        ).toBe(true);
+        await client.close();
+      }
+    },
+  );
+
+  test("402 on authenticated primary falls back to a separate anonymous session", async () => {
+    const fixture = await createFixture((request) =>
+      request.headers["x-api-key"] ? errorResult(`${toolName} error (402): ${sentinel}`) : success,
+    );
+    const client = createExaMcpClient({ endpoint: fixture.endpoint, apiKey: sentinel });
+    await client.setStrategy("authenticated-first");
+    expect(await invoke(client, operation)).toEqual({
+      text: "ok",
+      auth: "anonymous",
+      fallback: { from: "api-key", to: "anonymous", reason: "credits-exhausted" },
+    });
+    const calls = fixture.requests.filter((r) => r.message?.method === "tools/call");
+    expect(calls.map((r) => r.headers["x-api-key"])).toEqual([sentinel, undefined]);
+    expect(calls[0].headers["mcp-session-id"]).not.toBe(calls[1].headers["mcp-session-id"]);
+    expect(calls[0].message?.params).toEqual(calls[1].message?.params);
+    await client.close();
+  });
+
+  test("classified authenticated 429 is terminal and has no retry time", async () => {
+    const fixture = await createFixture(() => errorResult(`${toolName} error (429): ${sentinel}`));
+    const client = createExaMcpClient({ endpoint: fixture.endpoint, apiKey: sentinel });
+    await client.setStrategy("authenticated-first");
+    await expect(invoke(client, operation)).rejects.toMatchObject({
+      code: "authenticated-rate-limit",
+      retryAt: undefined,
+    });
+    expect(countRequests(fixture, "tools/call")).toBe(1);
+    await client.close();
+  });
+
+  test("a no-header HTTP 429 probes anonymously once before key fallback", async () => {
+    const fixture = await createFixture((request) =>
+      request.headers["x-api-key"] ? success : { status: 429 },
+    );
+    const client = createExaMcpClient({ endpoint: fixture.endpoint, apiKey: sentinel });
+    expect(await invoke(client, operation)).toEqual({
+      text: "ok",
+      auth: "api-key",
+      fallback: rateFallback,
+    });
+    const calls = fixture.requests.filter((r) => r.message?.method === "tools/call");
+    expect(calls.map((r) => r.headers["x-api-key"])).toEqual([undefined, undefined, sentinel]);
+    expect(
+      calls.every(
+        (r) => JSON.stringify(r.message?.params) === JSON.stringify(calls[0].message?.params),
+      ),
+    ).toBe(true);
+    await client.close();
+  });
+
+  test.each([
+    ["leading whitespace", () => errorResult(` ${toolName} error (402): ${sentinel}`)],
+    ["leading text", () => errorResult(`failure: ${toolName} error (429): ${sentinel}`)],
+    ["wrong tool", () => errorResult(`${otherName} error (402): ${sentinel}`)],
+    [
+      "later text block",
+      () => ({
+        result: {
+          isError: true,
+          content: [
+            { type: "text", text: "ordinary error" },
+            { type: "text", text: `${toolName} error (402): ${sentinel}` },
+          ],
+        },
+      }),
+    ],
+    ["unsupported status", () => errorResult(`${toolName} error (403): ${sentinel}`)],
+    ["altered prefix", () => errorResult(`${toolName} error (402) : ${sentinel}`)],
+    ["natural language", () => errorResult(`Credits exhausted; rate limit 429 [402] ${sentinel}`)],
+    ["raw HTTP 402", () => ({ status: 402, body: sentinel })],
+  ] as const)("does not replay %s", async (label, reply) => {
+    const fixture = await createFixture(() => reply());
+    const client = createExaMcpClient({ endpoint: fixture.endpoint, apiKey: sentinel });
+    await client.setStrategy("authenticated-first");
+    const failure: unknown = await invoke(client, operation).catch((error: unknown) => error);
+    expect(failure).toMatchObject({ code: label === "raw HTTP 402" ? "transport" : "tool" });
+    expect(inspect(failure, { showHidden: true, depth: 10 })).not.toContain(sentinel);
+    expect(countRequests(fixture, "tools/call")).toBe(1);
+    await client.close();
+  });
+
+  test.each([false, undefined])(
+    "preserves exact-prefix success when isError=%s",
+    async (isError) => {
+      const text = `${toolName} error (402): ${sentinel}`;
+      const fixture = await createFixture(() => ({
+        result: {
+          ...(isError === undefined ? {} : { isError }),
+          content: [
+            { type: "text", text },
+            { type: "text", text: "second" },
+          ],
+        },
+      }));
+      const client = createExaMcpClient({ endpoint: fixture.endpoint, apiKey: sentinel });
+      await client.setStrategy("authenticated-first");
+      expect(await invoke(client, operation)).toEqual({
+        text: text + "\n\nsecond",
+        auth: "api-key",
+      });
+      expect(countRequests(fixture, "tools/call")).toBe(1);
+      await client.close();
+    },
+  );
+
+  test("classifies the first text block even when non-text content precedes it", async () => {
+    const fixture = await createFixture(() => ({
+      result: {
+        isError: true,
+        content: [
+          { type: "image", data: "eA==", mimeType: "image/png" },
+          { type: "text", text: `${toolName} error (429): ${sentinel}` },
+        ],
+      },
+    }));
+    const client = createExaMcpClient({ endpoint: fixture.endpoint, apiKey: sentinel });
+    await client.setStrategy("authenticated-first");
+    await expect(invoke(client, operation)).rejects.toMatchObject({
+      code: "authenticated-rate-limit",
+    });
+    expect(countRequests(fixture, "tools/call")).toBe(1);
+    await client.close();
+  });
+
+  test.each([402, 429])("anonymous tool-result %i is not the HTTP gate", async (code) => {
+    const fixture = await createFixture(() =>
+      errorResult(`${toolName} error (${code}): ${sentinel}`),
+    );
+    const client = createExaMcpClient({ endpoint: fixture.endpoint, apiKey: sentinel });
+    await expect(invoke(client, operation)).rejects.toMatchObject({ code: "tool" });
+    expect(countRequests(fixture, "tools/call")).toBe(1);
+    await client.close();
+  });
+
+  test("composes key and anonymous session recovery with one fallback and one probe", async () => {
+    let keyCalls = 0;
+    let anonymousCalls = 0;
+    const fixture = await createFixture((request) => {
+      if (request.headers["x-api-key"]) {
+        if (++keyCalls === 1) return { status: 404 };
+        return errorResult(`${toolName} error (402): ${sentinel}`);
+      }
+      if (++anonymousCalls === 1) return { status: 404 };
+      return { status: 429, headers: { "retry-after": "0" } };
+    });
+    const client = createExaMcpClient({ endpoint: fixture.endpoint, apiKey: sentinel });
+    await client.setStrategy("authenticated-first");
+    await expect(invoke(client, operation)).rejects.toMatchObject({ code: "anonymous-rate-limit" });
+    expect(keyCalls).toBe(2);
+    expect(anonymousCalls).toBe(3);
+    expect(countRequests(fixture, "initialize")).toBe(4);
+    await client.close();
+  });
+
+  test("a settings change in another process affects the next call, not an in-flight snapshot", async () => {
+    const gate = deferred<void>();
+    const fixture = await createFixture(() => success, { initializeGate: gate.promise });
+    const client = createExaMcpClient({ endpoint: fixture.endpoint, apiKey: sentinel });
+    const pending = invoke(client, operation);
+    await waitUntil(() => countRequests(fixture, "initialize") === 1);
+    const child = fork(
+      resolvePath("tests/fixtures/state-worker.ts"),
+      ["settings", "authenticated-first"],
+      {
+        env: { ...process.env, PI_CODING_AGENT_DIR: agentDir },
+        stdio: ["ignore", "ignore", "pipe", "ipc"],
+      },
+    );
+    child.on("message", (message) => {
+      if (message === "ready") child.send("start");
+      if (message === "before-replace") child.send("replace");
+    });
+    try {
+      const [code] = await once(child, "exit");
+      expect(code).toBe(0);
+    } finally {
+      child.kill();
+      gate.resolve();
+    }
+    expect(await pending).toEqual({ text: "ok", auth: "anonymous" });
+    expect(await invoke(client, operation)).toEqual({ text: "ok", auth: "api-key" });
+    expect(await client.getStrategy()).toBe("authenticated-first");
+    await client.close();
+    await expect(client.getStrategy()).rejects.toMatchObject({ code: "lifecycle" });
+    await expect(client.setStrategy("anonymous-first")).rejects.toMatchObject({
+      code: "lifecycle",
+    });
+  });
+});
+
 describe("concurrent route lifecycle", () => {
+  test("parallel authenticated calls keep primary and credit-fallback metadata separate", async () => {
+    const bothSent = deferred<void>();
+    const fixture = await createFixture(async (request) => {
+      if (getToolArgument(request, "query") !== undefined && request.headers["x-api-key"]) {
+        await bothSent.promise;
+        return errorResult(`web_search_exa error (402): ${sentinel}`);
+      }
+      bothSent.resolve();
+      return success;
+    });
+    const client = createExaMcpClient({ endpoint: fixture.endpoint, apiKey: sentinel });
+    await client.setStrategy("authenticated-first");
+    expect(await Promise.all([invoke(client, "search"), invoke(client, "fetch")])).toEqual([
+      {
+        text: "ok",
+        auth: "anonymous",
+        fallback: { from: "api-key", to: "anonymous", reason: "credits-exhausted" },
+      },
+      { text: "ok", auth: "api-key" },
+    ]);
+    expect(countRequests(fixture, "tools/call")).toBe(3);
+    await client.close();
+  });
   test("shares a failed key initialization and reconnects on the next call", async () => {
     const fixture = await createFixture(
       (request) =>
@@ -554,7 +830,10 @@ describe("concurrent route lifecycle", () => {
   test("deduplicates key initialization and cancels only its individual waiter", async () => {
     const gate = deferred<void>();
     const fixture = await createFixture(
-      (request) => (request.headers["x-api-key"] === undefined ? { status: 429 } : success),
+      (request) =>
+        request.headers["x-api-key"] === undefined
+          ? { status: 429, headers: { "retry-after": "30" } }
+          : success,
       {
         initializeGate: (request) =>
           request.headers["x-api-key"] === undefined ? Promise.resolve() : gate.promise,
@@ -569,7 +848,7 @@ describe("concurrent route lifecycle", () => {
     controller.abort(reason);
     await expect(canceled).rejects.toBe(reason);
     gate.resolve();
-    expect(await survivor).toEqual({ text: "ok", auth: "api-key" });
+    expect(await survivor).toEqual({ text: "ok", auth: "api-key", fallback: rateFallback });
     expect(countRequests(fixture, "initialize")).toBe(2);
     await client.close();
   });
@@ -627,7 +906,10 @@ describe("concurrent route lifecycle", () => {
   test("terminates both sessions in parallel under one grace period", async () => {
     const gate = deferred<void>();
     const fixture = await createFixture(
-      (request) => (request.headers["x-api-key"] === undefined ? { status: 429 } : success),
+      (request) =>
+        request.headers["x-api-key"] === undefined
+          ? { status: 429, headers: { "retry-after": "30" } }
+          : success,
       { deleteGate: gate.promise },
     );
     const client = createExaMcpClient({ endpoint: fixture.endpoint, apiKey: sentinel });

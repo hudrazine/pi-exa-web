@@ -9,8 +9,10 @@ import {
 } from "@modelcontextprotocol/client";
 import { AsyncLocalStorage } from "node:async_hooks";
 import packageJson from "../package.json" with { type: "json" };
-import { createAnonymousFirstPolicy, type AuthRoute } from "./anonymous-first.ts";
-import { ExaError, readRetryAt, safeError } from "./errors.ts";
+import { createAnonymousFirstPolicy, type AuthRoute, type Fallback } from "./anonymous-first.ts";
+import { AnonymousRateLimitError, ExaError, readRetryAt, safeError } from "./errors.ts";
+import { createStateStore } from "./state-store.ts";
+import type { Strategy } from "./state-schema.ts";
 import type { ExaWebClient } from "./register-tools.ts";
 
 const EXA_MCP_ENDPOINT = new URL("https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa");
@@ -37,6 +39,8 @@ interface Observation {
 }
 
 export interface ExaMcpClient extends ExaWebClient {
+  getStrategy(): Promise<Strategy>;
+  setStrategy(strategy: Strategy): Promise<Strategy>;
   close(): Promise<void>;
 }
 
@@ -46,6 +50,7 @@ export function createExaMcpClient(
   const endpoint = options.endpoint ?? EXA_MCP_ENDPOINT;
   const apiKey = options.apiKey?.trim() || undefined;
   const policy = createAnonymousFirstPolicy(apiKey !== undefined);
+  const store = createStateStore();
   const routes: Record<AuthRoute, RouteState> = { anonymous: {}, "api-key": {} };
   const observations = new AsyncLocalStorage<Observation>();
   const resources = new Set<Connection>();
@@ -94,10 +99,12 @@ export function createExaMcpClient(
                 : status >= 500 && status <= 599
                   ? "server"
                   : "transport";
-        context.failure = new ExaError(
-          code,
-          status === 429 ? readRetryAt(response.headers, Date.now()) : undefined,
-        );
+        const observedAt = Date.now();
+        const retryAt = status === 429 ? readRetryAt(response.headers, observedAt) : undefined;
+        context.failure =
+          code === "anonymous-rate-limit"
+            ? new AnonymousRateLimitError(observedAt, retryAt)
+            : new ExaError(code, retryAt);
         context.expiredSession =
           status === 404 && method === "tools/call" && headers.has("mcp-session-id");
       }
@@ -149,23 +156,24 @@ export function createExaMcpClient(
     name: "web_search_exa" | "web_fetch_exa",
     args: Record<string, unknown>,
     callerSignal: AbortSignal | undefined,
-  ): Promise<{ text: string; auth: AuthRoute }> {
+  ): Promise<{ text: string; auth: AuthRoute; fallback?: Fallback }> {
     const signal = AbortSignal.any([
       lifecycle.signal,
       ...(callerSignal === undefined ? [] : [callerSignal]),
     ]);
     // A probe is still part of the same route attempt: reconnection cannot reset its budget.
     const recovered = new Set<AuthRoute>();
-    async function attempt(route: AuthRoute): Promise<CallToolResult> {
+    async function attempt(route: AuthRoute): Promise<string> {
       for (;;) {
         signal.throwIfAborted();
         const active = await getConnection(route, signal);
         const context: Observation = { phase: "tool", signal };
         try {
           signal.throwIfAborted();
-          return await observations.run(context, () =>
+          const result = await observations.run(context, () =>
             active.client.callTool({ name, arguments: args }, { signal }),
           );
+          return readText(result, name, route);
         } catch (error) {
           signal.throwIfAborted();
           if (context.expiredSession) {
@@ -184,9 +192,12 @@ export function createExaMcpClient(
       }
     }
     try {
-      const { result, auth } = await policy.run(attempt, signal);
       signal.throwIfAborted();
-      return { text: readText(result), auth };
+      const { strategy } = await store.readSettings();
+      signal.throwIfAborted();
+      const { result, auth, fallback } = await policy.run(attempt, signal, strategy);
+      signal.throwIfAborted();
+      return { text: result, auth, ...(fallback === undefined ? {} : { fallback }) };
     } catch (error) {
       signal.throwIfAborted();
       throw safeError(error);
@@ -244,6 +255,16 @@ export function createExaMcpClient(
   }
 
   return {
+    async getStrategy() {
+      lifecycle.signal.throwIfAborted();
+      const { strategy } = await store.readSettings();
+      lifecycle.signal.throwIfAborted();
+      return strategy;
+    },
+    async setStrategy(strategy) {
+      lifecycle.signal.throwIfAborted();
+      return (await store.writeSettings({ version: 1, strategy }, lifecycle.signal)).strategy;
+    },
     search(parameters, signal) {
       return call(
         "web_search_exa",
@@ -283,8 +304,16 @@ function requestMethod(init: RequestInit | undefined): unknown {
   return typeof body === "object" && body !== null ? Reflect.get(body, "method") : undefined;
 }
 
-function readText(result: CallToolResult): string {
-  if (result.isError === true) throw new ExaError("tool");
+function readText(result: CallToolResult, name: string, route: AuthRoute): string {
+  if (result.isError === true) {
+    const first = result.content.find((block) => block.type === "text");
+    if (route === "api-key" && first?.type === "text") {
+      if (first.text.startsWith(`${name} error (402):`)) throw new ExaError("credits-exhausted");
+      if (first.text.startsWith(`${name} error (429):`))
+        throw new ExaError("authenticated-rate-limit");
+    }
+    throw new ExaError("tool");
+  }
   const text = result.content
     .filter(
       (block): block is Extract<(typeof result.content)[number], { type: "text" }> =>

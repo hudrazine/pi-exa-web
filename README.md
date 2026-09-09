@@ -47,9 +47,19 @@ When an optional limit is omitted, the package leaves the value unset so Exa can
 
 ## Authentication and rate limits
 
-Requests start with anonymous access. An Exa API key is not required for normal installation or initial use.
+The default strategy starts with anonymous access. An Exa API key is not required for normal installation or initial use. The following strategy controls are implemented in this checkout for the next release:
 
-If Exa reports that the anonymous rate limit has been reached, the package may wait briefly and retry anonymously. If anonymous access remains unavailable, it retries the tool call with `EXA_API_KEY` when the variable is configured. Without a key, the request fails with a message that links to the [Exa API key dashboard](https://dashboard.exa.ai/api-keys).
+```text
+/exa strategy
+/exa strategy anonymous-first
+/exa strategy authenticated-first
+```
+
+`authenticated-first` uses the configured API key, or anonymous access when no key is configured. Strategy changes are saved in Pi's agent directory and apply to the next tool call, including calls from another Pi process using that directory. An in-flight call keeps its starting strategy.
+
+On anonymous HTTP 429, the package probes once after the header's delay when it is at most two seconds. Without usable headers it waits one second and probes once; longer header delays skip the probe. A continuing limit allows one API-key fallback. After that fallback, anonymous-first temporarily selects the key directly until the final header deadline, or one second after the last no-header 429. Without a key, each call still tries anonymous access under the same probe limit.
+
+An authenticated tool error with Exa's exact credit-exhaustion prefix permits one anonymous fallback. Authenticated rate limits do not retry or fall back. A call never switches back to its earlier route. Pi shows the successful route and, when expanded, the fallback reason; the tool's successful text stays unchanged.
 
 Set the environment variable before starting Pi:
 
@@ -75,9 +85,9 @@ The key is read and trimmed once when the extension starts. Anonymous and API-ke
 - Failures use package-owned messages without raw upstream errors, headers, or causes.
 - The package does not provide caching, custom endpoints, alternate providers, or configurable retry settings.
 
-## State storage foundation (unreleased)
+## Local state (unreleased)
 
-The checkout includes private storage for upcoming OAuth and routing settings. Current web tools do not yet read or write that state, and OAuth management commands are not available.
+Web tools read the saved strategy at each call boundary, and `/exa strategy` saves changes. Unreadable or invalid settings stop the call before network access and are not overwritten by the command. OAuth storage is a private foundation; OAuth login, refresh, logout and status commands are not yet available.
 
 State belongs in the `exa-web` child of Pi's agent directory, including its override. `settings.json` holds the strategy, `oauth.json` holds revisioned credentials, and `oauth.lock.sqlite` coordinates OAuth updates between processes. API keys are never saved. Settings do not require SQLite; OAuth transactions load Node's release-candidate `node:sqlite` lazily and fail safely if it is disabled.
 

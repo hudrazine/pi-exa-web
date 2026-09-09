@@ -1,8 +1,8 @@
 # OAuth Lifecycle and State Design
 
-**Status:** Accepted for `0.2.0`; PR2 persistence implemented locally, OAuth lifecycle and OS verification pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
+**Status:** Accepted for `0.2.0`; PR2 persistence merged with four-job CI verified; OAuth lifecycle pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
 
-This document defines OAuth lifecycle, storage, and cross-process transaction behavior accepted on 2026-09-09. The accepted [routing design](oauth-routing.md) owns route selection, command behavior, error classification, and connection lifecycle. The [implementation plan](../plans/oauth-routing.md) owns delivery; the [verification specification](../plans/oauth-verification.md) owns acceptance checks. The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is implemented by PR2's private foundation; OAuth integration and OS CI remain pending.
+This document defines OAuth lifecycle, storage, and cross-process transaction behavior accepted on 2026-09-09. The accepted [routing design](oauth-routing.md) owns route selection, command behavior, error classification, and connection lifecycle. The [implementation plan](../plans/oauth-routing.md) owns delivery; the [verification specification](../plans/oauth-verification.md) owns acceptance checks. The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is implemented by PR2's private foundation; OAuth integration remains pending; PR2's four-job CI passed.
 
 ## OAuth Lifecycle
 
@@ -28,7 +28,7 @@ Logout atomically commits an empty OAuth record with a higher revision, then inv
 
 ## Persistence and Multiple Pi Processes
 
-PR2 implements the private persistence described here; OAuth lifecycle operations and routing integration remain pending. `src/state-schema.ts` defines credentials with `resource`, SDK `tokens`, SDK `clientInformation`, SDK `discovery`, optional absolute epoch-millisecond `expiresAt`, and boolean `loginRequired`. SDK-stamped issuer fields are retained separately from wire-schema validation and must match discovery. Validation rejects invalid fields, coercions and stripped properties. `tests/fixtures/oauth-state.ts` pins SDK 2.0.0 serialization; these fixtures do not establish Hosted compatibility.
+PR2 implements the private persistence described here; PR3 uses settings for routing, while OAuth lifecycle operations and credential selection remain pending. `src/state-schema.ts` defines credentials with `resource`, SDK `tokens`, SDK `clientInformation`, SDK `discovery`, optional absolute epoch-millisecond `expiresAt`, and boolean `loginRequired`. SDK-stamped issuer fields are retained separately from wire-schema validation and must match discovery. Validation rejects invalid fields, coercions and stripped properties. `tests/fixtures/oauth-state.ts` pins SDK 2.0.0 serialization; these fixtures do not establish Hosted compatibility.
 
 Use `getAgentDir()` from Pi and a private `exa-web` child directory, independent of the project working directory. Do not use the repository, Pi session log, model-provider auth file, or a caller-configurable state path. Respect Pi's agent-directory override through that helper. Different agent directories are isolated. Do not use the separate ExaFuse project's state directory or automatically import its credentials.
 
