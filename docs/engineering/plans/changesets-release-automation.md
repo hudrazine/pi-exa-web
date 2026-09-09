@@ -1,44 +1,22 @@
-# Changesets Release Automation Plan
+# Changesets Release Verification Plan
 
-## Goal
+**Status:** Active; automation implemented, first managed publication unverified
 
-After `@hudrazine/pi-exa-web@0.1.0` is published and verified, use Changesets to maintain versions and `CHANGELOG.md`, create a reviewable release pull request, and automate trusted npm publication, Git tags, and GitHub Releases behind the existing `npm-production` approval.
+## Outcome and Current Evidence
 
-## Current State
+Verify the first live release that uses Changesets from release-PR creation through registry-installed Pi execution. The [release procedure](../releases.md) owns the maintained workflow and operator steps; this plan owns only outstanding verification.
 
-- The initial release is complete and retained in the archived [Initial Release Plan](archive/initial-release.md).
-- `@hudrazine/pi-exa-web@0.1.0`, Git tag `v0.1.0`, and its GitHub Release are published and verified.
-- The `npm-production` Environment and npm Trusted Publisher are configured and have completed one approval-gated OIDC publication without a token or GitHub secret.
-- `@changesets/cli@3.0.1` and `@changesets/changelog-github@1.0.1` are locked as development dependencies, and `bumpp` has been removed.
-- `.changeset/config.json`, package scripts, the pull-request changeset policy, and a `CHANGELOG.md` seeded from `0.1.0` are implemented. Future changelog entries include GitHub pull-request, commit, and author links.
-- `.github/workflows/publish.yml` uses the individual `changesets/action@2.1.1` actions for mode selection, release-PR versioning, and publishing.
-- The release-PR job has repository and pull-request write access but no OIDC permission. Only the approval-gated `npm-production` publish job has `id-token: write`.
-- Local checks, all 36 tests, a frozen install, seven-file package inspection, workflow parsing and permission assertions, and an isolated `0.1.0` to `0.1.1` Changesets version simulation pass.
-- The implementation and pnpm interoperability fix are merged. On `main`, [Release run 32694790843](https://github.com/hudrazine/pi-exa-web/actions/runs/32694790843) resolved Vite+-managed pnpm `11.22.0`, completed `changeset publish-plan`, selected the no-release mode, and skipped the version, verify, and publish jobs as intended.
-- No npm publication or GitHub repository setting was changed during the rollout. The first live Changesets-managed release and its external verification remain outstanding.
+Recorded local verification passed checks, tests, frozen installation, package inspection, workflow parsing/permission assertions, and an isolated patch-version simulation. [Release run 32694790843](https://github.com/hudrazine/pi-exa-web/actions/runs/32694790843) completed mode selection using Vite+-managed pnpm, selected no release work, and skipped version, verify, and publish jobs.
 
-## Proposed Changes
+The [initial release](../records/initial-release.md) verified approval-gated OIDC publication. It did not exercise Changesets release-PR creation or the full managed release path. No extra npm publication is needed solely to close this plan; verify the next authorized package release.
 
-Verify the repository-side Changesets implementation with the first live automated release. Preserve the `publish.yml` filename and `npm-production` environment so the npm trust binding remains stable. Changesets and the release pull request own subsequent version and changelog updates; maintainers do not edit the workflow for each release. Keep release-PR permissions separate from publish permissions, and require the existing environment approval only for the OIDC publish job.
+## Remaining Work
 
-## Tasks
-
-1. [x] Recheck the stable Changesets CLI, Changesets Action, pnpm, and npm Trusted Publisher compatibility before selecting versions.
-2. [x] Add Changesets configuration and package scripts for changeset creation, GitHub-linked changelogs, versioning, and publishing; remove `bumpp`.
-3. [x] Seed `CHANGELOG.md` with the verified `0.1.0` release notes so public history starts with the initial formal release.
-4. [x] Define when a pull request requires a changeset and how maintainers record an intentional no-release change.
-5. [x] Add a least-privilege release-PR job that collects merged changesets and updates the version and changelog without OIDC permission.
-6. [x] Replace the one-time `0.1.0` publish behavior in `publish.yml`, remove `EXPECTED_VERSION` and its fixed-version check, and add a generic publish job that runs checks and package inspection, waits for `npm-production` approval, publishes through OIDC, and creates the Git tag and GitHub Release.
-7. [x] Test the version and changelog flow locally without contacting npm.
-8. [x] Update the current release procedure for Changesets-managed releases.
-9. [x] Verify on `main` that Vite+ exposes pnpm `11.22.0` to Changesets and the no-release mode exits successfully without running privileged jobs.
-10. [ ] Verify the first automated release with matching npm metadata, provenance, Git tag, GitHub Release, changelog, and bounded registry and Pi smoke tests.
-11. [ ] Archive this plan after the first automated release is verified.
+- [ ] Observe Changesets create or update a release pull request for a releasable change. Confirm the proposed version and GitHub-linked changelog, then complete required CI review and merge.
+- [ ] Complete the [release procedure](../releases.md#review-and-publish-a-release), including its permission boundaries and authorized deployment approval.
+- [ ] Complete the procedure's [post-publication verification](../releases.md#verification), including artifact consistency and registry-installed anonymous Pi smoke tests.
+- [ ] Record the release version and verification evidence, update relevant guidance if needed, and close this plan. Retain only evidence with continuing maintenance value.
 
 ## Completion Criteria
 
-- Releasable pull requests carry a reviewable version intent and user-facing summary.
-- The release pull request owns package version and changelog updates without manual duplication.
-- Only the approved publish job has `id-token: write`; no long-lived npm publish token exists.
-- A successful release produces matching npm metadata, Git tag, GitHub Release, and GitHub-linked `CHANGELOG.md` content.
-- Routine releases require only changeset authoring, release-PR review and merge, and one `npm-production` approval; they do not require editing `publish.yml` or an expected-version value.
+A successful release uses Changesets-owned version/changelog updates and produces consistent release artifacts without a long-lived npm token. Routine operator work is changeset authoring, release-PR review/merge, and one environment approval; it requires no per-release workflow edits. A registry-installed package must pass the smoke tests before this plan is complete.

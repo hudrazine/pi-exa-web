@@ -1,12 +1,10 @@
 # npm Release Procedure
 
-## Current Release State
+## Release Ownership
 
-`@hudrazine/pi-exa-web@0.1.0` is published and verified under `latest`; `preview` remains on `0.0.1`. Git tag and GitHub Release `v0.1.0` identify the publication commit.
+Changesets owns package versions and `CHANGELOG.md` updates. Changelog entries include originating GitHub pull-request, commit, and author links. A push to `main` runs [`publish.yml`](../../.github/workflows/publish.yml), which creates or updates a release pull request, publishes an approved release, or exits without release work.
 
-Changesets now owns subsequent package versions and `CHANGELOG.md` updates. New changelog entries include links to the originating GitHub pull request, commit, and author. A push to `main` runs `.github/workflows/publish.yml`, which either creates or updates the release pull request, publishes an approved release, or exits without release work. The first Changesets-managed release remains to be verified under the active [Changesets Release Automation Plan](plans/changesets-release-automation.md).
-
-The no-release path is verified on `main`: Vite+ supplied pnpm `11.22.0`, Changesets selected no release work, and the privileged jobs remained skipped.
+The workflow is implemented and its no-release path has recorded verification. The first Changesets-managed publication remains an [active verification task](plans/changesets-release-automation.md). [Initial release evidence](records/initial-release.md) records the completed `0.1.0` OIDC publication; check registry state during each release rather than relying on that historical result.
 
 ## Preconditions
 
@@ -18,7 +16,7 @@ The no-release path is verified on `main`: Vite+ supplied pnpm `11.22.0`, Change
 - Do not add a build or generated distribution artifact. Pi loads the published TypeScript source through jiti.
 - GitHub Actions must be allowed to create pull requests before release-PR automation can operate. This repository setting is not managed by the workflow.
 
-## Record A Release Intent
+## Record a Release Intent
 
 Follow the repository policy in [`.changeset/README.md`](../../.changeset/README.md).
 
@@ -32,7 +30,7 @@ Follow the repository policy in [`.changeset/README.md`](../../.changeset/README
 3. Commit the generated `.changeset/*.md` file with the implementation pull request.
 4. A changeset is not required for documentation, tests, CI configuration, or an internal refactor that does not change published behavior. Use `vp run changeset --empty` when an explicit no-release record is useful.
 
-## Review And Publish A Release
+## Review and Publish a Release
 
 1. After changesets reach `main`, the `select-mode` job chooses the release mode.
 2. When versioning is required, the `version` job uses `changesets/action/version` to create or update `chore(release): version package`. This job can write repository contents and pull requests but has no OIDC permission.
@@ -61,7 +59,7 @@ The external binding must remain exact and case-sensitive:
 After a successful publication:
 
 1. Confirm that npm `latest` resolves to the release-PR version and that the artifact carries provenance.
-2. Confirm that the registry artifact contains only `README.md`, `LICENSE`, `package.json`, and the four `src/*.ts` files.
+2. Compare the registry artifact with the reviewed dry-run file list and publication commit. It must contain the required TypeScript source, README, license, and package metadata, with no tests, fixtures, state, secrets, or generated distribution artifact.
 3. Confirm that the Git tag, GitHub Release, npm version, and `CHANGELOG.md` entry use the same version and release notes.
 4. Install the exact registry version in a clean Pi package directory.
 5. With `EXA_API_KEY` unset, make one bounded anonymous `web_search` call and one bounded anonymous `web_fetch` call.
