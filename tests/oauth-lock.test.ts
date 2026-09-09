@@ -12,11 +12,13 @@ let exec: ReturnType<typeof vi.fn<(sql: string) => void>>;
 let close: ReturnType<typeof vi.fn<() => void>>;
 let opened: boolean;
 let connectionCount: number;
+let load: ReturnType<typeof vi.fn<() => void>>;
 beforeEach(() => {
   vi.resetModules();
   now = 0;
   opened = false;
   connectionCount = 0;
+  load = vi.fn();
   open = vi.fn(() => {
     opened = true;
   });
@@ -28,25 +30,29 @@ beforeEach(() => {
   vi.spyOn(timers, "setTimeout").mockImplementation(async (ms) => {
     now += ms ?? 0;
   });
-  vi.doMock("node:sqlite", () => ({
-    DatabaseSync: class {
-      constructor() {
-        connectionCount++;
-      }
-      get isOpen() {
-        return opened;
-      }
-      open() {
-        open();
-      }
-      exec(sql: string) {
-        exec(sql);
-      }
-      close() {
-        close();
-      }
-    },
-  }));
+  // Register once per test: Vitest resolves consecutive doMock calls in parallel.
+  vi.doMock("node:sqlite", () => {
+    load();
+    return {
+      DatabaseSync: class {
+        constructor() {
+          connectionCount++;
+        }
+        get isOpen() {
+          return opened;
+        }
+        open() {
+          open();
+        }
+        exec(sql: string) {
+          exec(sql);
+        }
+        close() {
+          close();
+        }
+      },
+    };
+  });
 });
 afterEach(() => {
   vi.restoreAllMocks();
@@ -170,7 +176,7 @@ describe("OAuth lock acquisition boundaries (L3)", () => {
     },
   );
   test("module unavailability and loading time cannot enter protected work", async () => {
-    vi.doMock("node:sqlite", () => {
+    load.mockImplementation(() => {
       throw secretError();
     });
     const { withOAuthLock } = await import("../src/oauth-lock.ts");
@@ -180,13 +186,8 @@ describe("OAuth lock acquisition boundaries (L3)", () => {
     expect(connectionCount).toBe(0);
   });
   test("module loading counts towards the deadline", async () => {
-    vi.doMock("node:sqlite", () => {
+    load.mockImplementation(() => {
       now = 10_000;
-      return {
-        DatabaseSync: vi.fn(function DatabaseSync() {
-          connectionCount++;
-        }),
-      };
     });
     const { withOAuthLock } = await import("../src/oauth-lock.ts");
     const operation = vi.fn();
