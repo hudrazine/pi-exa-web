@@ -1,6 +1,6 @@
 # v0.2.0 OAuth and Routing Implementation Plan
 
-**Status:** PR1/PR2 merged; PR3 anonymous/API-key routing implemented locally, PR CI pending; OAuth stages pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
+**Status:** PR1/PR2 merged; PR3 anonymous/API-key routing implemented locally, CI verified; OAuth stages pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
 
 This plan defines delivery order and completion for the OAuth feature accepted on 2026-09-09. The accepted [routing design](../proposals/oauth-routing.md) and [state design](../proposals/oauth-state.md) define its behavior; the [verification specification](oauth-verification.md) owns acceptance checks. Acceptance includes both strategies and the OAuth lifecycle, alongside the previously accepted [SQLite coordination decision](../decisions/sqlite-state-locking.md) and its lock contract. Full feature implementation and verification remain pending.
 
@@ -31,7 +31,7 @@ The following stages implement the accepted design. Each stage uses the [verific
 
 - [x] Implement both strategies for anonymous/API-key access, classifiers, one-second no-header probe and fixed cooldown, header-derived deadlines and retry budgets. T9 adds OAuth resolution.
 - [x] Retain initialization-time API-key reading and attach credentials only to their route connection.
-- [x] Verify anonymous/API-key routing, probe/cooldown and connection regression contracts locally. PR3 four-job CI remains pending.
+- [x] Verify anonymous/API-key routing, probe/cooldown and connection regression contracts locally. PR3 four-job CI passed for `189ab6a`.
 
 ### 3. Persistent State and OAuth
 

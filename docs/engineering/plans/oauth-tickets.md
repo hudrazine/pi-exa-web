@@ -1,6 +1,6 @@
 # v0.2.0 Local Tickets and PR Tracking
 
-**Status:** PR1/PR2 merged; PR3 implemented locally, PR CI and merge pending; PR4–PR6 not started
+**Status:** PR1/PR2 merged; PR3 implemented locally, CI verified, merge pending; PR4–PR6 not started
 
 This tracker organizes the accepted 0.2.0 design into local tickets and PRs. Use T1–T14 as stable ticket IDs without GitHub Issues. The authoritative designs are [routing](../proposals/oauth-routing.md), [OAuth state](../proposals/oauth-state.md), and [SQLite locking](../design/oauth-state-locking.md). This document tracks scope, acceptance criteria, dependencies, and progress. The review baseline is `c6158b20fbc32d09bc7853836a4142e33a841ecc`.
 
@@ -35,10 +35,10 @@ Split OAuth into ordinary-call authentication (PR4) and interactive login and ma
 | --- | --- | --- | --- | --- |
 | T1 | PR1 | Safe errors and SDK pinning | Done | [Merged PR #15](https://github.com/hudrazine/pi-exa-web/pull/15) |
 | T2 | PR1 | Route-specific MCP connections | Done | [Merged PR #15](https://github.com/hudrazine/pi-exa-web/pull/15) |
-| T3 | PR3 | Anonymous probes and cooldown | In review | [Draft PR #17](https://github.com/hudrazine/pi-exa-web/pull/17); local verification passed, PR CI pending |
+| T3 | PR3 | Anonymous probes and cooldown | In review | [Draft PR #17](https://github.com/hudrazine/pi-exa-web/pull/17); [local and four-job CI verified](https://github.com/hudrazine/pi-exa-web/actions/runs/34329770811) |
 | T4 | PR2 | SQLite locking | Done | [Merged PR #16](https://github.com/hudrazine/pi-exa-web/pull/16); [four CI jobs passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016) |
 | T5 | PR2 | OAuth revisions and settings replacement | Done | [Merged PR #16](https://github.com/hudrazine/pi-exa-web/pull/16); [four CI jobs passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016) |
-| T6 | PR3 | Strategy settings, 402 fallback, and display | In review | [Draft PR #17](https://github.com/hudrazine/pi-exa-web/pull/17); local verification passed, PR CI pending |
+| T6 | PR3 | Strategy settings, 402 fallback, and display | In review | [Draft PR #17](https://github.com/hudrazine/pi-exa-web/pull/17); [local and four-job CI verified](https://github.com/hudrazine/pi-exa-web/actions/runs/34329770811) |
 | T7 | PR5 | OAuth login validation and commit | Todo | — |
 | T8 | PR4 | Refresh and local logout | Todo | — |
 | T9 | PR4 | OAuth route selection and 401 recovery | Todo | — |

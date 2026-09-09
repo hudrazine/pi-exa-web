@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | Web tools and anonymous/API-key access | Implemented in `0.1.0` | [Tool contract](design/web-tools.md), [authentication contract](design/anonymous-first.md) |
 | Safe errors and route-specific connections | PR1 merged in [#15](https://github.com/hudrazine/pi-exa-web/pull/15); unreleased | [Errors and secret handling](design/web-tools.md#errors-and-secret-handling) |
-| Selectable anonymous/API-key routing | PR3 implemented locally; PR CI and merge pending | [Delivery plan](plans/oauth-routing.md) |
+| Selectable anonymous/API-key routing | PR3 implemented locally; CI verified, merge pending | [Delivery plan](plans/oauth-routing.md) |
 | SQLite OAuth coordination, JSON storage and higher Node.js minimum | PR2 merged in [#16](https://github.com/hudrazine/pi-exa-web/pull/16); all four CI jobs passed | [Decision and rationale](decisions/sqlite-state-locking.md), [lock contract](design/oauth-state-locking.md) |
 | Changesets release automation | Implemented; first managed publication unverified | [Remaining release verification](plans/changesets-release-automation.md) |
 

@@ -29,7 +29,7 @@ Test expectations must follow the relevant contract, not private filenames or cl
 
 PR2 adds `tests/oauth-lock.test.ts` and `tests/state-store.test.ts` for L1–L3, revisions, complete replacement, cleanup, same/child-process settings ordering and directory isolation. `tests/state-loader.test.ts` checks real Pi/jiti loading of SQLite, storage-error rendering and SessionManager records, and the effective runtime.
 
-The [CI workflow](../../.github/workflows/ci.yml) defines development-runtime jobs on Linux x64, macOS arm64 and Windows x64, plus Node 24.15.0 on Linux. Every job runs the full check/test suite and asserts the effective test-process runtime. Local Linux results do not establish macOS/Windows success; PR2 passed [all four CI jobs](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016). New feature revisions still require their own CI results; PR3 CI is pending.
+The [CI workflow](../../.github/workflows/ci.yml) defines development-runtime jobs on Linux x64, macOS arm64 and Windows x64, plus Node 24.15.0 on Linux. Every job runs the full check/test suite and asserts the effective test-process runtime. Local Linux results do not establish macOS/Windows success; PR2 passed [all four CI jobs](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016). New feature revisions still require their own CI results; PR3 CI passed for `189ab6a`.
 
 The minimum-runtime job selects `vp env use 24.15.0` and invokes `vp check` / `vp test` directly. `vp run` scripts resolve pnpm's local Node shim pinned by `devEngines.runtime`, which otherwise runs 24.19.0 even after a session override. Development jobs retain `vp run check` / `vp run test`; the test-process assertion guards both paths.
 
