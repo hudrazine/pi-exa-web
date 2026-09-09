@@ -1,6 +1,6 @@
 # v0.2.0 Local Tickets and PR Tracking
 
-**Status:** PR1/PR2 merged; PR3 implemented locally, CI verified, merge pending; PR4–PR6 not started
+**Status:** PR1–PR3 merged; PR4 implemented and verified locally on development/minimum Node, OS CI pending; PR5/PR6 not started
 
 This tracker organizes the accepted 0.2.0 design into local tickets and PRs. Use T1–T14 as stable ticket IDs without GitHub Issues. The authoritative designs are [routing](../proposals/oauth-routing.md), [OAuth state](../proposals/oauth-state.md), and [SQLite locking](../design/oauth-state-locking.md). This document tracks scope, acceptance criteria, dependencies, and progress. The review baseline is `c6158b20fbc32d09bc7853836a4142e33a841ecc`.
 
@@ -35,20 +35,20 @@ Split OAuth into ordinary-call authentication (PR4) and interactive login and ma
 | --- | --- | --- | --- | --- |
 | T1 | PR1 | Safe errors and SDK pinning | Done | [Merged PR #15](https://github.com/hudrazine/pi-exa-web/pull/15) |
 | T2 | PR1 | Route-specific MCP connections | Done | [Merged PR #15](https://github.com/hudrazine/pi-exa-web/pull/15) |
-| T3 | PR3 | Anonymous probes and cooldown | In review | [Draft PR #17](https://github.com/hudrazine/pi-exa-web/pull/17); [local and four-job CI verified](https://github.com/hudrazine/pi-exa-web/actions/runs/34329770811) |
+| T3 | PR3 | Anonymous probes and cooldown | Done | [Merged PR #17](https://github.com/hudrazine/pi-exa-web/pull/17), `346f0f8`; [four CI jobs passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34330004672) for `a0b32de` |
 | T4 | PR2 | SQLite locking | Done | [Merged PR #16](https://github.com/hudrazine/pi-exa-web/pull/16); [four CI jobs passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016) |
 | T5 | PR2 | OAuth revisions and settings replacement | Done | [Merged PR #16](https://github.com/hudrazine/pi-exa-web/pull/16); [four CI jobs passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016) |
-| T6 | PR3 | Strategy settings, 402 fallback, and display | In review | [Draft PR #17](https://github.com/hudrazine/pi-exa-web/pull/17); [local and four-job CI verified](https://github.com/hudrazine/pi-exa-web/actions/runs/34329770811) |
+| T6 | PR3 | Strategy settings, 402 fallback, and display | Done | [Merged PR #17](https://github.com/hudrazine/pi-exa-web/pull/17), `346f0f8`; [four CI jobs passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34330004672) for `a0b32de` |
 | T7 | PR5 | OAuth login validation and commit | Todo | — |
-| T8 | PR4 | Refresh and local logout | Todo | — |
-| T9 | PR4 | OAuth route selection and 401 recovery | Todo | — |
+| T8 | PR4 | Refresh and local logout | In review | [Draft PR #19](https://github.com/hudrazine/pi-exa-web/pull/19); local dev/minimum checks passed: rotating-token, L4/L5 and cleanup tests; OS CI/merge pending |
+| T9 | PR4 | OAuth route selection and 401 recovery | In review | [Draft PR #19](https://github.com/hudrazine/pi-exa-web/pull/19); local dev/minimum checks passed: real SDK, retry/lifecycle and Pi boundary tests; OS CI/merge pending |
 | T10 | PR5 | Pi management commands and shutdown | Todo | — |
 | T11 | PR2 | CI for operating systems and minimum Node version | Done | [Merged PR #16](https://github.com/hudrazine/pi-exa-web/pull/16); [four CI jobs passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016) |
 | T12 | PR6 | Documentation, package contents, and Changeset | Todo | — |
 | T13 | Verification gate | Hosted OAuth smoke | Todo | — |
 | T14 | Verification gate | Release and first managed publication verification | Todo | — |
 
-PR1 local verification is covered by `tests/anonymous-first.test.ts`, `tests/exa-mcp-client.test.ts`, and `tests/index.test.ts`: safe failures and retry times, route-specific sessions, cancellation, bounded recovery/shutdown, Pi source loading, rendering, and persisted error records. T1/T2 remain unmerged; mark Done only after merge. Authenticated tool-text classifiers and the new probe/cooldown behavior remain T6/T3 work.
+PR1 local verification is covered by `tests/anonymous-first.test.ts`, `tests/exa-mcp-client.test.ts`, and `tests/index.test.ts`: safe failures and retry times, route-specific sessions, cancellation, bounded recovery/shutdown, Pi source loading, rendering, and persisted error records. T1/T2 are merged. T3/T6 are also Done after PR #17 merged. PR4 adds `tests/oauth-state.test.ts`, `tests/oauth-routing.test.ts`, `tests/oauth-process.test.ts` and `tests/oauth-boundary.test.ts`; see the [verification record](oauth-verification.md#pr4-verification) for evidence. T8/T9 remain incomplete until PR4's four-job CI and merge; interactive management and Hosted verification remain pending.
 
 ## Shared acceptance requirements
 

@@ -1,8 +1,8 @@
 # v0.2.0 OAuth and Routing Design
 
-**Status:** Accepted for `0.2.0`; PR1/PR2 merged, PR3 anonymous/API-key routing implemented locally; OAuth pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
+**Status:** Accepted for `0.2.0`; PR1–PR3 merged; PR4 saved OAuth runtime integration implemented locally; interactive management pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
 
-This document defines the behavior and source-backed rationale accepted on 2026-09-09. The [implementation plan](../plans/oauth-routing.md) owns delivery; the [verification specification](../plans/oauth-verification.md) owns acceptance checks. The [current architecture](../architecture.md) describes the checkout, including unreleased PR1–PR3 changes over `0.1.0`. The accepted [OAuth state design](oauth-state.md) defines login, refresh, and persistence. PR2 implements the private [SQLite coordination foundation](../decisions/sqlite-state-locking.md); OAuth integration remains pending. PR2 passed its four-job CI; PR3 CI passed for `189ab6a`.
+This document defines the behavior and source-backed rationale accepted on 2026-09-09. The [implementation plan](../plans/oauth-routing.md) owns delivery; the [verification specification](../plans/oauth-verification.md) owns acceptance checks. The [current architecture](../architecture.md) describes the checkout, including unreleased PR1–PR4 changes over `0.1.0`. The accepted [OAuth state design](oauth-state.md) defines login, refresh, and persistence. PR2 implements the private [SQLite coordination foundation](../decisions/sqlite-state-locking.md); PR4 integrates saved OAuth; interactive login and management remain pending. PR2 passed its four-job CI; PR3 CI passed for `189ab6a`.
 
 ## Purpose and Scope
 

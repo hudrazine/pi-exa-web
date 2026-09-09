@@ -1,8 +1,31 @@
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
-import { createAnonymousFirstPolicy, type AuthRoute } from "../src/anonymous-first.ts";
+import {
+  createAnonymousFirstPolicy as createPolicy,
+  CreditsExhaustedError,
+  type AuthRoute,
+} from "../src/anonymous-first.ts";
+import type { Strategy } from "../src/state-schema.ts";
 import { AnonymousRateLimitError, ExaError, readRetryAt } from "../src/errors.ts";
 
 const signal = new AbortController().signal;
+// Keep timing fixtures focused on route outcomes; real-SDK tests supply OAuth resolution.
+function createAnonymousFirstPolicy(hasKey: boolean) {
+  const policy = createPolicy(async () => (hasKey ? "api-key" : undefined));
+  return {
+    clear: () => policy.clear(),
+    run<T>(
+      operation: (route: AuthRoute) => Promise<T>,
+      callerSignal: AbortSignal,
+      strategy?: Strategy,
+    ) {
+      return policy.run(
+        async (auth) => ({ result: await operation(auth), auth }),
+        callerSignal,
+        strategy,
+      );
+    },
+  };
+}
 const now = Date.parse("2026-08-17T00:00:00Z");
 const rateFallback = { from: "anonymous", to: "api-key", reason: "anonymous-rate-limit" };
 const creditFallback = { from: "api-key", to: "anonymous", reason: "credits-exhausted" };
@@ -115,7 +138,7 @@ describe("bounded route policy", () => {
     expect(await policy.run(run, signal)).toEqual({ result: "ok", auth: "api-key" });
     const reverse = vi
       .fn<(route: AuthRoute) => Promise<string>>()
-      .mockRejectedValueOnce(new ExaError("credits-exhausted"))
+      .mockRejectedValueOnce(new CreditsExhaustedError("api-key"))
       .mockResolvedValue("ok");
     expect(await policy.run(reverse, signal)).toEqual({
       result: "ok",
@@ -152,7 +175,7 @@ describe("bounded route policy", () => {
     vi.setSystemTime(now);
     const run = vi
       .fn<(route: AuthRoute) => Promise<string>>()
-      .mockRejectedValueOnce(new ExaError("credits-exhausted"))
+      .mockRejectedValueOnce(new CreditsExhaustedError("api-key"))
       .mockRejectedValueOnce(new AnonymousRateLimitError(now))
       .mockRejectedValueOnce(new AnonymousRateLimitError(now + 1_000, now + 20_000));
     const pending = expect(

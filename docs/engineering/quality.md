@@ -1,6 +1,6 @@
 # Quality and Development
 
-Changes must preserve the [product requirements](product.md), [tool contract](design/web-tools.md), and [authentication policy](design/anonymous-first.md). Normal checks use local transports and deterministic timing; they must not depend on Hosted Exa availability or consume its quota. The [OAuth verification specification](plans/oauth-verification.md) maps PR1 connection checks, PR2 storage checks and PR3 routing/command checks; OAuth lifecycle verification remains pending.
+Changes must preserve the [product requirements](product.md), [tool contract](design/web-tools.md), and [authentication policy](design/anonymous-first.md). Normal checks use local transports and deterministic timing; they must not depend on Hosted Exa availability or consume its quota. The [OAuth verification specification](plans/oauth-verification.md) maps PR1 connection checks, PR2 storage checks, PR3 routing/command checks and PR4 non-interactive OAuth checks. Interactive OAuth and Hosted verification remain pending.
 
 ## Local Workflow
 
@@ -21,6 +21,10 @@ vp run test
 | Pi contract | Names, schemas, bounds, argument mapping, optional omission, successful content/details, thrown errors | [`tests/index.test.ts`](../../tests/index.test.ts) |
 | Display | Pending, success, error, cancellation, collapsed/expanded output, requested-count labels; real Pi `ToolExecutionComponent` coverage without unstable style snapshots | [`tests/index.test.ts`](../../tests/index.test.ts) |
 | Authentication policy | Short/long/no-header probes, header parsing, fixed cooldown/parallel deadlines, missing key, bounded bidirectional fallback, abort-aware delay, credential isolation, no retry cycles | [`tests/anonymous-first.test.ts`](../../tests/anonymous-first.test.ts) |
+| OAuth state | Refresh expiry/issuer preservation, terminal versus transient rejection, rotation then write/rename failure, cleanup error precedence and logout races | [`tests/oauth-state.test.ts`](../../tests/oauth-state.test.ts) |
+| OAuth routing | Both tools/strategies, lazy selection, 401 replay, session-budget composition, auth alternatives, revision retirement and three-route shutdown | [`tests/oauth-routing.test.ts`](../../tests/oauth-routing.test.ts) |
+| OAuth process exclusion | Two real processes reuse one remote refresh for proactive expiry and 401 recovery (L4) | [`tests/oauth-process.test.ts`](../../tests/oauth-process.test.ts) |
+| OAuth Pi boundary | Production loader, OAuth secrets in failures/causes/challenges/storage, rendering, logs and persisted conversation | [`tests/oauth-boundary.test.ts`](../../tests/oauth-boundary.test.ts) |
 | SDK integration | Real MCP client/transport against a local server: both strategies and settings snapshots, exact 402/429 classifiers and near misses, intent replay, route-specific headers/sessions, concurrent route/failure evidence, per-route initialization sharing, HTTP cancellation, session-only recovery, in-flight closure, one shared termination grace, repeated shutdown | [`tests/exa-mcp-client.test.ts`](../../tests/exa-mcp-client.test.ts) |
 
 Test expectations must follow the relevant contract, not private filenames or class structure. Successful text preservation and error secrecy are distinct obligations. The [tool contract](design/web-tools.md#errors-and-secret-handling) owns the safe-output boundary. `tests/exa-mcp-client.test.ts` also loads the source through Pi's real loader, checks secret-free error objects and rendering, and writes error results with Pi's SessionManager to verify persisted conversation records.
@@ -29,7 +33,7 @@ Test expectations must follow the relevant contract, not private filenames or cl
 
 PR2 adds `tests/oauth-lock.test.ts` and `tests/state-store.test.ts` for L1–L3, revisions, complete replacement, cleanup, same/child-process settings ordering and directory isolation. `tests/state-loader.test.ts` checks real Pi/jiti loading of SQLite, storage-error rendering and SessionManager records, and the effective runtime.
 
-The [CI workflow](../../.github/workflows/ci.yml) defines development-runtime jobs on Linux x64, macOS arm64 and Windows x64, plus Node 24.15.0 on Linux. Every job runs the full check/test suite and asserts the effective test-process runtime. Local Linux results do not establish macOS/Windows success; PR2 passed [all four CI jobs](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016). New feature revisions still require their own CI results; PR3 CI passed for `189ab6a`.
+The [CI workflow](../../.github/workflows/ci.yml) defines development-runtime jobs on Linux x64, macOS arm64 and Windows x64, plus Node 24.15.0 on Linux. Every job runs the full check/test suite and asserts the effective test-process runtime. Local Linux results do not establish macOS/Windows success; PR2 passed [all four CI jobs](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016). New feature revisions still require their own CI results; [PR3 CI passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34330004672) for `a0b32de`. PR4's new four-job CI remains pending until a PR is created.
 
 The minimum-runtime job selects `vp env use 24.15.0` and invokes `vp check` / `vp test` directly. `vp run` scripts resolve pnpm's local Node shim pinned by `devEngines.runtime`, which otherwise runs 24.19.0 even after a session override. Development jobs retain `vp run check` / `vp run test`; the test-process assertion guards both paths.
 

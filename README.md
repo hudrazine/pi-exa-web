@@ -24,7 +24,7 @@ Search the web for the latest TypeScript 7 documentation.
 Fetch https://example.com and summarize the page.
 ```
 
-Pi chooses the appropriate tool and shows whether the completed request used anonymous access or an API key.
+Pi chooses the appropriate tool and shows whether the completed request used anonymous access, OAuth, or an API key.
 
 ## Tools
 
@@ -55,9 +55,9 @@ The default strategy starts with anonymous access. An Exa API key is not require
 /exa strategy authenticated-first
 ```
 
-`authenticated-first` uses the configured API key, or anonymous access when no key is configured. Strategy changes are saved in Pi's agent directory and apply to the next tool call, including calls from another Pi process using that directory. An in-flight call keeps its starting strategy.
+`authenticated-first` prefers usable saved OAuth credentials, refreshing expired credentials when possible, then the configured API key, then anonymous access. Strategy changes are saved in Pi's agent directory and apply to the next tool call, including calls from another Pi process using that directory. An in-flight call keeps its starting strategy.
 
-On anonymous HTTP 429, the package probes once after the header's delay when it is at most two seconds. Without usable headers it waits one second and probes once; longer header delays skip the probe. A continuing limit allows one API-key fallback. After that fallback, anonymous-first temporarily selects the key directly until the final header deadline, or one second after the last no-header 429. Without a key, each call still tries anonymous access under the same probe limit.
+On anonymous HTTP 429, the package probes once after the header's delay when it is at most two seconds. Without usable headers it waits one second and probes once; longer header delays skip the probe. A continuing limit allows one authenticated fallback, preferring saved OAuth over an API key. After that fallback, anonymous-first temporarily selects available authentication directly until the final header deadline, or one second after the last no-header 429. Without usable authentication, each call still tries anonymous access under the same probe limit. A successful anonymous primary does not read or refresh OAuth.
 
 An authenticated tool error with Exa's exact credit-exhaustion prefix permits one anonymous fallback. Authenticated rate limits do not retry or fall back. A call never switches back to its earlier route. Pi shows the successful route and, when expanded, the fallback reason; the tool's successful text stays unchanged.
 
@@ -73,7 +73,7 @@ PowerShell:
 $env:EXA_API_KEY = "your-api-key"
 ```
 
-The key is read and trimmed once when the extension starts. Anonymous and API-key access use separate connections; the key is sent as an `x-api-key` header on the API-key connection, including initialization. It is not placed in request URLs. Search queries and fetched URLs are sent to Exa Hosted MCP to perform the requested operation.
+The key is read and trimmed once when the extension starts. Anonymous, OAuth and API-key access use separate connections; the key is sent as an `x-api-key` header on the API-key connection, including initialization. It is not placed in request URLs or OAuth requests. OAuth uses SDK Bearer authentication on `https://mcp.exa.ai/mcp/oauth`. Search queries and fetched URLs are sent to Exa Hosted MCP to perform the requested operation.
 
 ## Behavior and limitations
 
@@ -81,13 +81,13 @@ The key is read and trimmed once when the extension starts. Anonymous and API-ke
 - `web_fetch` accepts one URL per call.
 - Anonymous rate-limit state is kept only in the current extension process and resets when the process ends.
 - Cancellation is forwarded to the active Exa tool request.
-- An expired MCP session is reconnected once only when Exa returns HTTP 404 for a request carrying a server-issued session ID. Other transport failures are not automatically replayed.
+- An expired MCP session is reconnected once only when Exa returns HTTP 404 for a request carrying a server-issued session ID. OAuth permits one same-route SDK retry after a 401, using a refreshed or newer saved token. These retry limits do not reset one another; other transport failures are not automatically replayed.
 - Failures use package-owned messages without raw upstream errors, headers, or causes.
 - The package does not provide caching, custom endpoints, alternate providers, or configurable retry settings.
 
 ## Local state (unreleased)
 
-Web tools read the saved strategy at each call boundary, and `/exa strategy` saves changes. Unreadable or invalid settings stop the call before network access and are not overwritten by the command. OAuth storage is a private foundation; OAuth login, refresh, logout and status commands are not yet available.
+Web tools read the saved strategy at each call boundary, and `/exa strategy` saves changes. Unreadable or invalid settings stop the call before network access and are not overwritten by the command. Saved OAuth credentials can now authenticate ordinary calls and refresh without interaction. Terminal refresh rejection marks them as requiring login. Refresh and local logout share a SQLite transaction through JSON replacement; a failed save stops the call without trying another route. Login, logout and status commands are not yet available; private logout support is reserved for their later integration. This checkout does not yet offer an interactive way to create OAuth credentials.
 
 State belongs in the `exa-web` child of Pi's agent directory, including its override. `settings.json` holds the strategy, `oauth.json` holds revisioned credentials, and `oauth.lock.sqlite` coordinates OAuth updates between processes. API keys are never saved. Settings do not require SQLite; OAuth transactions load Node's release-candidate `node:sqlite` lazily and fail safely if it is disabled.
 
