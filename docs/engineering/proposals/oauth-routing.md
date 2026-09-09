@@ -89,18 +89,19 @@ Each logical tool call allows one primary route and at most one fallback. Intern
 
 Use these accepted private policy constants; they express package policy, not Exa quota values:
 
-| Setting                                 | Value                       |
-| --------------------------------------- | --------------------------- |
-| Maximum anonymous probe delay           | 2,000 ms                    |
-| Probe delay without usable headers      | 1,000 ms                    |
-| Initial cooldown without usable headers | 1,000 ms                    |
-| Repeated no-header cooldown growth      | Double, capped at 30,000 ms |
+| Setting                            | Value    |
+| ---------------------------------- | -------- |
+| Maximum anonymous probe delay      | 2,000 ms |
+| Probe delay without usable headers | 1,000 ms |
+| Cooldown without usable headers    | 1,000 ms |
 
 For anonymous tools/call HTTP 429, parse `Retry-After` (non-negative seconds or HTTP date), then `X-RateLimit-Reset` (epoch seconds or milliseconds). Clamp past deadlines to now. Ignore malformed/non-finite values. `retryAt` is epoch milliseconds and exists only when a header supplies usable evidence; a private default delay is not an upstream retry time.
 
 If the first delay is at most 2,000 ms, wait and retry anonymous once. If it exceeds that limit, skip the wait and probe. Without usable headers, wait 1,000 ms and retry once. A second 429 or skipped long probe permits authenticated fallback. With no authenticated alternative, return `anonymous-rate-limit` after the same bounded handling.
 
-After a rate-limit fallback, suppress anonymous primary selection until the last 429's header deadline, or the fixed cooldown when no usable deadline exists. When the next post-cooldown anonymous attempt again causes no-header fallback, double the cooldown up to the cap. Concurrent requests may fail independently but must not multiply the growth for the same probe generation; update cooldown state synchronously and do not shorten a later active deadline. Anonymous success clears cooldown/backoff. No quota scheduler or shared cooldown is introduced. Without a usable authenticated alternative, attempt anonymous despite cooldown. Cooldown disappears when the extension closes.
+After a rate-limit fallback, suppress anonymous primary selection until the last 429's header deadline, or until 1,000 ms after observing that final 429 when no usable deadline exists. Repeated no-header failures use the same fixed duration; do not keep an exponent, failure count, or probe generation. Concurrent requests may fail independently; update the single cooldown deadline synchronously using the later of the active deadline and the new deadline. Anonymous success clears cooldown. No quota scheduler or shared cooldown is introduced. Without a usable authenticated alternative, attempt anonymous despite cooldown. Cooldown disappears when the extension closes.
+
+The fixed no-header policy retains one bounded chance to avoid account-credit use without a backoff state machine. Missing headers provide no evidence of a longer upstream retry time. This simplicity can cause more anonymous attempts during a persistent no-header limit than exponential backoff; accept that tradeoff. Header-derived deadlines and the one-probe/one-fallback limits remain unchanged.
 
 No authenticated-credit cooldown or balance discovery is added: authenticated-first may receive a fresh 402 on each later call until the account state changes.
 

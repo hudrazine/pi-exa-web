@@ -16,6 +16,8 @@ Prefer official contracts, pinned source, and explicit inference over separate f
 
 ## Implementation Sequence
 
+Track individual review units, acceptance criteria, and progress in the [local ticket and PR tracker](oauth-tickets.md). The stages below describe the delivery scope; ticket status and PR links are maintained in that tracker.
+
 The following stages implement the accepted design. Each stage uses the [verification specification](oauth-verification.md).
 
 ### 1. Private Connections and Fixtures
@@ -26,13 +28,13 @@ The following stages implement the accepted design. Each stage uses the [verific
 
 ### 2. Anonymous and API-key Routing
 
-- [ ] Implement both strategies, authenticated-route resolution, classifiers, probe/cooldown policy, and retry budgets from the design.
+- [ ] Implement both strategies, authenticated-route resolution, classifiers, one-second no-header probe and fixed cooldown, header-derived deadlines, and retry budgets from the design.
 - [ ] Retain initialization-time API-key reading and attach credentials only to their route connection.
 - [ ] Verify accepted no-header probing, cooldown bypass without usable credentials, and route-specific connections against their design contracts; retain other current regression requirements.
 
 ### 3. Persistent State and OAuth
 
-- [ ] Raise `engines.node` to `>=24.15.0` and implement the private SQLite lock wrapper and revisioned JSON transactions under the accepted contract.
+- [ ] Raise `engines.node` to `>=24.15.0` and implement OAuth exclusion using separate SQLite connections without a local mutex, and revisioned OAuth JSON transactions. Implement settings as validated last-write-wins JSON replacement without a revision or lock.
 - [ ] Implement per-call settings reads, OAuth revision observation, staged login, non-interactive refresh including 401 recovery, and local logout.
 
 ### 4. Pi Integration
