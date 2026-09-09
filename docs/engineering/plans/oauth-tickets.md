@@ -35,10 +35,10 @@ Split OAuth into ordinary-call authentication (PR4) and interactive login and ma
 | --- | --- | --- | --- | --- |
 | T1 | PR1 | Safe errors and SDK pinning | Done | [Merged PR #15](https://github.com/hudrazine/pi-exa-web/pull/15) |
 | T2 | PR1 | Route-specific MCP connections | Done | [Merged PR #15](https://github.com/hudrazine/pi-exa-web/pull/15) |
-| T3 | PR3 | Anonymous probes and cooldown | In progress | Local implementation and verification; PR CI pending |
+| T3 | PR3 | Anonymous probes and cooldown | In review | [Draft PR #17](https://github.com/hudrazine/pi-exa-web/pull/17); local verification passed, PR CI pending |
 | T4 | PR2 | SQLite locking | Done | [Merged PR #16](https://github.com/hudrazine/pi-exa-web/pull/16); [four CI jobs passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016) |
 | T5 | PR2 | OAuth revisions and settings replacement | Done | [Merged PR #16](https://github.com/hudrazine/pi-exa-web/pull/16); [four CI jobs passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016) |
-| T6 | PR3 | Strategy settings, 402 fallback, and display | In progress | Local implementation and verification; PR CI pending |
+| T6 | PR3 | Strategy settings, 402 fallback, and display | In review | [Draft PR #17](https://github.com/hudrazine/pi-exa-web/pull/17); local verification passed, PR CI pending |
 | T7 | PR5 | OAuth login validation and commit | Todo | — |
 | T8 | PR4 | Refresh and local logout | Todo | — |
 | T9 | PR4 | OAuth route selection and 401 recovery | Todo | — |
