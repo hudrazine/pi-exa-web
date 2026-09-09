@@ -1,6 +1,6 @@
 # Anonymous-first Authentication
 
-The implemented `0.1.0` policy starts tool calls anonymously and uses `EXA_API_KEY` only after an anonymous rate limit. The key is read once at extension initialization, trimmed, and never persisted. This contract does not include the [proposed OAuth strategies](../plans/oauth-routing-design.md).
+The implemented `0.1.0` policy starts tool calls anonymously and uses `EXA_API_KEY` only after an anonymous rate limit. The key is read once at extension initialization, trimmed, and never persisted. This contract does not include the [proposed OAuth strategies](../proposals/oauth-routing.md).
 
 ## Eligible Requests and Credentials
 
@@ -10,7 +10,7 @@ Authenticated calls replay the same serialized tool request with `x-api-key`. Th
 
 ## Block State and Retry
 
-The policy stores one `anonymousBlockedUntil` timestamp in process memory. Credential presence is configuration, not another state. It maintains no persistent quota state or cross-process scheduler.
+The policy stores one anonymous block deadline in process memory. Credential presence is configuration. It maintains no persistent quota state or cross-process scheduler.
 
 | Condition | Behavior |
 | --- | --- |

@@ -3,7 +3,7 @@
 **Status:** Proposed; not implemented  
 **Target:** `@hudrazine/pi-exa-web@0.2.0`
 
-This document defines the proposed behavior and its source-backed rationale. The [implementation plan](oauth-routing.md) owns remaining work and verification. The [current architecture](../architecture.md) describes implemented `0.1.0` behavior. The [OAuth state proposal](oauth-state.md) defines login, refresh, and persistence. The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is accepted; implementation is pending.
+This document defines the proposed behavior and its source-backed rationale. The [implementation plan](../plans/oauth-routing.md) owns delivery; the [verification specification](../plans/oauth-verification.md) owns acceptance checks. The [current architecture](../architecture.md) describes implemented `0.1.0` behavior. The [OAuth state proposal](oauth-state.md) defines login, refresh, and persistence. The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is accepted; implementation is pending.
 
 ## Purpose and Scope
 
@@ -45,7 +45,7 @@ Retain the existing Pi tool registration and rendering boundary. Extend the priv
 | MCP connection management | Map the two tool calls; maintain one lazy connection per route; observe raw HTTP responses and return classified results. |
 | OAuth and state management | Compose SDK OAuth, callback lifecycle, revisioned storage, transactions, and directory-scoped concurrency. |
 
-The reviewed SDK baseline is MCP client `2.0.0`. Relevant OAuth/lifecycle fixtures must be revalidated on SDK upgrades. Runtime dependencies remain private; a matching MCP server may be exact-pinned for development fixtures only. Locking uses Node's bundled SQLite under the [lock contract](oauth-state-locking.md). Use the SDK for OAuth rather than implementing the protocol.
+The reviewed SDK baseline is MCP client `2.0.0`. Relevant OAuth/lifecycle fixtures must be revalidated on SDK upgrades. Runtime dependencies remain private; a matching MCP server may be exact-pinned for development fixtures only. Locking uses Node's bundled SQLite under the [lock contract](../design/oauth-state-locking.md). Use the SDK for OAuth rather than implementing the protocol.
 
 The executor switches routes around `Client.callTool`. Middleware supplies route-specific credentials and observes status/headers. This lets the executor inspect MCP `isError` results before text conversion. Return the route from the actual attempt, avoiding shared mutable last-route state. This private boundary does not require a generic router.
 
@@ -59,7 +59,7 @@ The executor switches routes around `Client.callTool`. Middleware supplies route
 
 OAuth and API-key credentials must never appear on the same request. Credentials belong to their route connection, including connection initialization as required by the server. Never attach credentials through a global fetch wrapper or put the API key in a URL. Do not try an alternate endpoint after failure.
 
-**Endpoint basis:** Exa's [OAuth handler][exa-oauth] configures `/mcp/oauth`. Its [request handler][exa-handler] rejects missing/invalid credentials before tool execution and gives `x-api-key` precedence over Bearer authentication, supporting separate credential connections. [Resource metadata][exa-metadata] and [JWT validation][exa-jwt] establish issuer/resource binding. Actual registration, consent, and refresh-token issuance require the plan's [release smoke](oauth-routing.md#hosted-oauth-release-smoke).
+**Endpoint basis:** Exa's [OAuth handler][exa-oauth] configures `/mcp/oauth`. Its [request handler][exa-handler] rejects missing/invalid credentials before tool execution and gives `x-api-key` precedence over Bearer authentication, supporting separate credential connections. [Resource metadata][exa-metadata] and [JWT validation][exa-jwt] establish issuer/resource binding. Actual registration, consent, and refresh-token issuance require the [Hosted release smoke](../plans/oauth-verification.md#hosted-oauth-release-smoke).
 
 ### Authenticated Credential Resolution
 
@@ -132,7 +132,7 @@ The authenticated compatibility classifiers require all of:
 3. Invoked upstream tool is exactly `web_search_exa` or `web_fetch_exa`.
 4. The first text block starts exactly with that invoked name followed by ` error (402):` or ` error (429):`.
 
-Do not trim leading text, scan later blocks, accept the other tool's name, match embedded status numbers/tags, or parse natural-language credit/rate-limit messages. The anonymous free-tier natural-language tool error is not the anonymous HTTP gate and does not authorize replay. A raw authenticated HTTP 402 is not covered by the tool-result compatibility rule; treat it as an unclassified failure without fallback until source-backed behavior is established. The 402 text prefix is the only text-based routing exception. Exact-prefix matching does not make the remainder safe to display.
+Do not trim leading text, scan later blocks, accept the other tool's name, match embedded status numbers/tags, or parse natural-language credit/rate-limit messages. The anonymous free-tier natural-language tool error is not the anonymous HTTP gate and does not authorize replay. A raw authenticated HTTP 402 is not covered by the tool-result compatibility rule; treat it as an unclassified failure without fallback until source-backed behavior is established. Only the 402 text prefix permits cross-route fallback; the 429 prefix classifies a terminal failure. Exact-prefix matching does not make the remainder safe to display.
 
 **Classifier basis:** Exa's [request handler][exa-handler] returns anonymous HTTP 429 before dispatch. Its [error formatter][exa-errors], used by [search][exa-search] and [fetch][exa-fetch], produces the authenticated prefixes above and a separate anonymous natural-language error. [exa-js][exa-js] preserves HTTP status but not error tags; [Exa's error reference][exa-status] associates 402 with account/team budget exhaustion. These boundaries justify the narrow routing classifiers.
 

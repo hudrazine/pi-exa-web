@@ -4,7 +4,7 @@ Guidance for AI coding agents working in this repository.
 
 ## Project Overview
 
-`pi-exa-web` is a Pi Package that provides Pi-native `web_search` and `web_fetch` tools through Exa Hosted MCP, using anonymous access first and `EXA_API_KEY` only after an anonymous rate limit. See [the engineering documentation](docs/engineering/index.md) for current contracts, architecture, quality criteria, and planned work.
+`pi-exa-web` is a Pi Package that provides Pi-native `web_search` and `web_fetch` tools through Exa Hosted MCP, using anonymous access first and `EXA_API_KEY` only after an anonymous rate limit. See [the engineering documentation](docs/engineering/README.md) for current contracts, architecture, quality criteria, and planned work.
 
 ## Commands
 

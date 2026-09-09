@@ -2,9 +2,9 @@
 
 **Status:** Accepted for `0.2.0`; not implemented
 
-This document defines the implementation contract for the [accepted SQLite coordination decision](../decisions/sqlite-state-locking.md). The [OAuth state proposal](oauth-state.md#transactions-and-revisions) owns revisioned JSON transactions, and the [implementation plan](oauth-routing.md#lock-and-state-cases) owns verification. These locks do not exist in the implemented `0.1.0` package.
+This document defines the implementation contract for the [accepted SQLite coordination decision](../decisions/sqlite-state-locking.md). The [OAuth state proposal](../proposals/oauth-state.md#transactions-and-revisions) owns revisioned JSON transactions, and the [verification specification](../plans/oauth-verification.md#lock-and-state-cases) owns acceptance checks. These locks do not exist in the implemented `0.1.0` package.
 
-## Implementation Contract
+## Acquisition and Cleanup
 
 Keep `settings.json` and `oauth.json` authoritative. Use persistent `settings.lock.sqlite` and `oauth.lock.sqlite` in the canonical state directory solely for exclusion. No credentials, lock rows, timestamps, or schema migrations are needed. An in-memory or per-process DB cannot coordinate independent Pi processes.
 
@@ -14,7 +14,7 @@ Keep `settings.json` and `oauth.json` authoritative. Use persistent `settings.lo
 4. Reread JSON under the acquired transaction and retain ownership through refresh, revision validation, write, and rename. The acquisition deadline is not a lease: a paused owner can make contenders time out. FIFO fairness is not promised.
 5. After protected work settles or stops, roll back the coordination transaction if acquired, close the connection even if rollback fails, and release the local mutex last. Pre-acquisition failures still close the connection. Report cleanup failures safely; cleanup cannot undo a committed JSON revision or a remotely rotated token.
 
-After owner death, SQLite and the OS release ownership and handle database recovery. A later call reuses the same DB; recovery need not finish within a current contender's budget. Keep DB and SQLite-managed journal files in place. Never delete/recreate them to resolve timeout or corruption. SQLite owns first-use initialization without an application table. The [state-directory protection](oauth-state.md#platform-limits) applies; coordination files carry no secrets.
+After owner death, SQLite and the OS release ownership and handle database recovery. A later call reuses the same DB; recovery need not finish within a current contender's budget. Keep DB and SQLite-managed journal files in place. Never delete/recreate them to resolve timeout or corruption. SQLite owns first-use initialization without an application table. The [state-directory protection](../proposals/oauth-state.md#platform-limits) applies; coordination files carry no secrets.
 
 ## Constraints
 

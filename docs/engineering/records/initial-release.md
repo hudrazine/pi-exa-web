@@ -1,6 +1,6 @@
 # Initial Release Verification
 
-**Status:** Completed
+**Status:** Historical verification record; completed
 
 This record preserves release identity and verification evidence for `@hudrazine/pi-exa-web@0.1.0`. It is not a release procedure or a statement of current registry tags. Use the [release procedure](../releases.md) for subsequent publications.
 
@@ -12,7 +12,7 @@ Repository checks, tests, package inspection, and Pi's real extension loader pas
 
 ## Package Identity and Publication Controls
 
-The permanent package name is `@hudrazine/pi-exa-web`. The unscoped `pi-exa-web@0.0.1` was deprecated with `Moved to @hudrazine/pi-exa-web`. The scoped preview artifact's license and four source files matched the verified unscoped artifact byte for byte; the name-only preview migration reused that Pi smoke evidence. At release completion, scoped `preview` pointed to `0.0.1` and `latest` to `0.1.0`.
+The release established the scoped package identity. The unscoped `pi-exa-web@0.0.1` was deprecated with `Moved to @hudrazine/pi-exa-web`. The scoped preview artifact's license and four source files matched the verified unscoped artifact byte for byte; the name-only preview migration reused that Pi smoke evidence. At release completion, scoped `preview` pointed to `0.0.1` and `latest` to `0.1.0`.
 
 The publication used npm Trusted Publisher and the `npm-production` environment with one reviewer, self-review permitted, and deployments restricted to `main`. No npm token or GitHub secret was used. npm publishing access was set to require 2FA and disallow bypass-2FA tokens. The [release procedure](../releases.md#trusted-publisher-configuration) owns the maintained trust-binding requirements.
 

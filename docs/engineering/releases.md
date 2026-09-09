@@ -1,6 +1,6 @@
 # npm Release Procedure
 
-## Workflow and Verification State
+## Release Ownership
 
 Changesets owns package versions and `CHANGELOG.md` updates. Changelog entries include originating GitHub pull-request, commit, and author links. A push to `main` runs [`publish.yml`](../../.github/workflows/publish.yml), which creates or updates a release pull request, publishes an approved release, or exits without release work.
 
@@ -16,7 +16,7 @@ The workflow is implemented and its no-release path has recorded verification. T
 - Do not add a build or generated distribution artifact. Pi loads the published TypeScript source through jiti.
 - GitHub Actions must be allowed to create pull requests before release-PR automation can operate. This repository setting is not managed by the workflow.
 
-## Record A Release Intent
+## Record a Release Intent
 
 Follow the repository policy in [`.changeset/README.md`](../../.changeset/README.md).
 
@@ -30,7 +30,7 @@ Follow the repository policy in [`.changeset/README.md`](../../.changeset/README
 3. Commit the generated `.changeset/*.md` file with the implementation pull request.
 4. A changeset is not required for documentation, tests, CI configuration, or an internal refactor that does not change published behavior. Use `vp run changeset --empty` when an explicit no-release record is useful.
 
-## Review And Publish A Release
+## Review and Publish a Release
 
 1. After changesets reach `main`, the `select-mode` job chooses the release mode.
 2. When versioning is required, the `version` job uses `changesets/action/version` to create or update `chore(release): version package`. This job can write repository contents and pull requests but has no OIDC permission.

@@ -3,7 +3,7 @@
 **Status:** Proposed; not implemented  
 **Target:** `@hudrazine/pi-exa-web@0.2.0`
 
-This document defines proposed OAuth lifecycle, storage, and cross-process transaction behavior. The [routing proposal](oauth-routing-design.md) owns route selection, command behavior, error classification, and connection lifecycle. The [implementation plan](oauth-routing.md) owns delivery and verification. The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is accepted for this target; the surrounding OAuth feature remains proposed.
+This document defines proposed OAuth lifecycle, storage, and cross-process transaction behavior. The [routing proposal](oauth-routing.md) owns route selection, command behavior, error classification, and connection lifecycle. The [implementation plan](../plans/oauth-routing.md) owns delivery; the [verification specification](../plans/oauth-verification.md) owns acceptance checks. The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is accepted for this target; the surrounding OAuth feature remains proposed.
 
 ## OAuth Lifecycle
 
@@ -29,7 +29,7 @@ Logout atomically commits an empty OAuth record with a higher revision, then inv
 
 ## Persistence and Multiple Pi Processes
 
-Use `getAgentDir()` from Pi and a private `exa-web` child directory, independent of the project working directory. Do not use the repository, Pi session log, model-provider auth file, or a caller-configurable state path. Respect Pi's agent-directory override through that helper. Different agent directories are isolated. ExaFuse, a separate project used as a design reference, supplies neither the state directory nor automatically imported credentials.
+Use `getAgentDir()` from Pi and a private `exa-web` child directory, independent of the project working directory. Do not use the repository, Pi session log, model-provider auth file, or a caller-configurable state path. Respect Pi's agent-directory override through that helper. Different agent directories are isolated. Do not use the separate ExaFuse project's state directory or automatically import its credentials.
 
 Persist only on explicit strategy writes, successful OAuth commits, or required OAuth state updates. Missing files mean defaults/not configured. Unknown schema versions, malformed JSON, invalid fields, and unreadable files are errors, not permission to delete or silently treat the user as logged out. Report the error without echoing file contents. Do not silently spend API-key resources when the intended saved state cannot be read.
 
@@ -42,7 +42,7 @@ The OAuth credentials record is proposed to hold SDK-required tokens/expiry, cli
 
 ### Transactions and Revisions
 
-Normalize the directory identity through the real existing parent/directory so equivalent local paths coordinate. Maintain a directory-keyed same-process mutex and separate cross-process settings/OAuth locks. Do not hold both locks at once. Use a 10-second lock-acquisition budget with abort support; timeout fails the operation and never permits an unlocked write. The [SQLite lock contract](oauth-state-locking.md) defines acquisition, cleanup, and synchronous I/O limits. Required semantics are: retain exclusion throughout the transaction, never steal from a live owner, and recover after process death without age-based deletion.
+Normalize the directory identity through the real existing parent/directory so equivalent local paths coordinate. Maintain a directory-keyed same-process mutex and separate cross-process settings/OAuth locks. Do not hold both locks at once. Use a 10-second lock-acquisition budget with abort support; timeout fails the operation and never permits an unlocked write. The [SQLite lock contract](../design/oauth-state-locking.md) defines acquisition, cleanup, and synchronous I/O limits. Required semantics are: retain exclusion throughout the transaction, never steal from a live owner, and recover after process death without age-based deletion.
 
 Every write acquires the relevant lock, reloads state, increments the latest revision, writes and closes a restricted temporary file in the same directory, and replaces the target with `fs.rename`. Use same-filesystem replacement for complete-file visibility, subject to the platform limits below.
 
@@ -56,7 +56,7 @@ Before authenticated selection and before using a cached OAuth connection, read 
 
 Target local filesystems on Linux, macOS, and Windows. On POSIX, use `0700` for the state directory and `0600` for secret and temporary files; verify restrictive access before storing secrets. On Windows, rely on the Pi agent directory's inherited ACLs; Node mode bits do not establish owner-only access. Do not claim Windows has POSIX-equivalent `0600` protection. Network filesystems are unsupported; do not add unreliable filesystem-type detection as a substitute for that support boundary.
 
-**Filesystem basis:** [Node rename][node-rename] and its POSIX contract support atomic name replacement. On Windows, [libuv `fs__rename`][uv-rename] uses `MoveFileExW` with replacement enabled; [Microsoft's contract][win-rename] specifies replacement and failure reporting. Complete-file visibility on supported local Windows storage is a high-confidence inference, not a universal guarantee. [Node's chmod limitation][node-chmod] explains why Windows protection relies on inherited ACLs. The implementation plan requires write/replace integration tests on the supported OSes; this platform behavior is not yet verified by the package.
+**Filesystem basis:** [Node rename][node-rename] and its POSIX contract support atomic name replacement. On Windows, [libuv `fs__rename`][uv-rename] uses `MoveFileExW` with replacement enabled; [Microsoft's contract][win-rename] specifies replacement and failure reporting. Complete-file visibility on supported local Windows storage is a high-confidence inference, not a universal guarantee. [Node's chmod limitation][node-chmod] explains why Windows protection relies on inherited ACLs. The [runtime checks](../plans/oauth-verification.md#runtime-and-package-checks) require write/replace integration tests on the supported OSes; this platform behavior is not yet verified by the package.
 
 [sdk-auth]: https://github.com/modelcontextprotocol/typescript-sdk/blob/cc4b41617ce3601b1290d67216ea0b194a3cd9ac/packages/client/src/client/auth.ts
 [sdk-transport]: https://github.com/modelcontextprotocol/typescript-sdk/blob/cc4b41617ce3601b1290d67216ea0b194a3cd9ac/packages/client/src/client/streamableHttp.ts

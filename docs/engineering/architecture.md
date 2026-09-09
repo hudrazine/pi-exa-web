@@ -1,6 +1,6 @@
 # Architecture
 
-`pi-exa-web` is a source-loaded Pi extension with one private Exa MCP connection. Pi-facing registration and rendering are separated from MCP lifecycle and authentication policy. This document describes implemented `0.1.0`; route-specific connections and persistent OAuth state belong to the [unimplemented proposal](plans/oauth-routing-design.md).
+`pi-exa-web` is a source-loaded Pi extension with one shared, lazy Exa MCP connection. Pi-facing registration and rendering are separated from MCP lifecycle and authentication policy. This document describes implemented `0.1.0`; route-specific connections and persistent OAuth state belong to the [unimplemented proposal](proposals/oauth-routing.md).
 
 ## Responsibilities and Call Flow
 
@@ -25,7 +25,7 @@ Each `Client.callTool` receives the caller's `AbortSignal`. A caller cancelled w
 
 ## Packaging and Dependencies
 
-[`package.json`](../../package.json) is authoritative for exact dependency versions, development runtimes, published files, and the extension entry. The current minimum Node.js version is `>=22.19.0`.
+[`package.json`](../../package.json) is authoritative for exact dependency versions, development runtimes, published files, and the extension entry. The installed package's runtime floor is defined there; the accepted [SQLite decision](decisions/sqlite-state-locking.md) raises that floor only for the unimplemented target release.
 
 The package-owned runtime dependency is `@modelcontextprotocol/client`, providing the MCP v2 client and Streamable HTTP transport. Pi supplies `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui`, and `typebox` as peers with range `*`; concrete development versions support local checks. Any MCP server fixture dependency must remain development-only.
 
@@ -33,6 +33,6 @@ The manifest declares the `pi-package` keyword and a `pi.extensions` source entr
 
 ## Design Rationale
 
-A single intent-level client keeps vendor protocol concerns out of Pi integration without introducing a general MCP framework. Authentication metadata uses a private `AsyncLocalStorage` context around each SDK tool call because concurrent calls can complete through different routes; shared last-route state would mislabel results.
+A single intent-level client keeps vendor protocol concerns out of Pi integration. These requirements need no generic provider interface, MCP adapter, dependency-injection container, or configuration subsystem. Private construction seams support deterministic tests. Authentication metadata uses a private `AsyncLocalStorage` context around each SDK tool call because concurrent calls can complete through different routes; shared last-route state would mislabel results.
 
 Runtime `listTools()` validation is omitted. Missing or renamed upstream tools surface as MCP tool errors, while bounded release smoke tests detect drift without adding discovery latency to every user's first call. The tool contract uses the common supported inputs and omits vendor defaults because the reviewed Hosted documentation and Exa source differed on some optional inputs and defaults.
