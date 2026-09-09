@@ -1,6 +1,6 @@
 # v0.2.0 OAuth and Routing Implementation Plan
 
-**Status:** PR1 foundation implemented locally; remaining stages pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
+**Status:** PR1 merged; PR2 state foundation implemented locally, OS CI pending; remaining stages pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
 
 This plan defines delivery order and completion for the OAuth feature accepted on 2026-09-09. The accepted [routing design](../proposals/oauth-routing.md) and [state design](../proposals/oauth-state.md) define its behavior; the [verification specification](oauth-verification.md) owns acceptance checks. Acceptance includes both strategies and the OAuth lifecycle, alongside the previously accepted [SQLite coordination decision](../decisions/sqlite-state-locking.md) and its lock contract. Full feature implementation and verification remain pending.
 
@@ -35,7 +35,7 @@ The following stages implement the accepted design. Each stage uses the [verific
 
 ### 3. Persistent State and OAuth
 
-- [ ] Raise `engines.node` to `>=24.15.0` and implement OAuth exclusion using separate SQLite connections without a local mutex, and revisioned OAuth JSON transactions. Implement settings as validated last-write-wins JSON replacement without a revision or lock.
+- [x] Raise `engines.node` to `>=24.15.0` and implement OAuth exclusion using separate SQLite connections without a local mutex, and revisioned OAuth JSON transactions. Implement settings as validated last-write-wins JSON replacement without a revision or lock. PR2 OS CI verification remains pending.
 - [ ] Implement per-call settings reads, OAuth revision observation, staged login, non-interactive refresh including 401 recovery, and local logout.
 
 ### 4. Pi Integration
@@ -49,7 +49,7 @@ The following stages implement the accepted design. Each stage uses the [verific
 - [ ] Pass the [local verification and Hosted OAuth smoke](oauth-verification.md).
 - [ ] Document commands, state protection/recovery, local logout, retry changes, initialization-time API-key headers, and SQLite's runtime constraints including the raised Node.js minimum in README.
 - [ ] Update product scope, architecture, tool/authentication contracts, and quality guidance after implementation verification. Require an isolated agent directory for anonymous release smoke tests so saved OAuth credentials cannot affect them.
-- [ ] Add a minor Changeset targeting `0.2.0`; let the release PR own version/changelog updates.
+- [x] Add a minor Changeset targeting `0.2.0` in PR2; PR6 reviews it without duplication, and the release PR owns version/changelog updates.
 - [ ] Follow the [release procedure](../releases.md). If this is the first Changesets-managed publication, also complete the independent [automation plan](changesets-release-automation.md).
 
 ## Completion

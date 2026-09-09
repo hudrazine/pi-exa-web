@@ -1,6 +1,6 @@
 # Architecture
 
-`pi-exa-web` is a source-loaded Pi extension with separate lazy MCP connections for anonymous and API-key access. Pi-facing registration and rendering are separated from MCP lifecycle and authentication policy. This document describes the current checkout, including unreleased PR1 changes over `0.1.0`. Persistent OAuth state and selectable strategies remain [accepted, unimplemented work](proposals/oauth-routing.md).
+`pi-exa-web` is a source-loaded Pi extension with separate lazy MCP connections for anonymous and API-key access. Pi-facing registration and rendering are separated from MCP lifecycle and authentication policy. This document describes merged PR1 and local PR2 changes over `0.1.0`. Private persistence is implemented; OAuth operations and selectable routing remain [accepted, unimplemented work](proposals/oauth-routing.md).
 
 ## Responsibilities and Call Flow
 
@@ -25,9 +25,13 @@ An HTTP 404 permits one fresh connection per route attempt only when the rejecte
 
 `session_shutdown` invokes idempotent close. It immediately aborts active calls, retry waits, and initialization, and rejects new work. Initialized sessions terminate in parallel under one shared one-second grace, after which all clients and transports close even if termination fails or stalls. Termination requests are independent of the aborted operation signal. Anonymous block state is cleared.
 
+## Private State Foundation
+
+`src/state-store.ts` uses Pi's `getAgentDir()` and canonicalizes the state directory. It has no cache or public path override. `src/state-schema.ts` validates records against version 1 and pinned SDK schemas. Settings use complete JSON replacement without SQLite. OAuth updates use `src/oauth-lock.ts`, with a connection per transaction, to reload the latest state and compare an optional expected revision before invoking the update callback. Returning `undefined` leaves JSON unchanged; credentials or `null` commit the next revision. SQLite rollback cannot undo JSON rename. The store is not yet wired into calls or commands; later PRs supply their signals and OAuth operations. See the [state contract](proposals/oauth-state.md#transactions-and-revisions).
+
 ## Packaging and Dependencies
 
-[`package.json`](../../package.json) is authoritative for exact dependency versions, development runtimes, published files, and the extension entry. The installed package's runtime floor is defined there; the accepted [SQLite decision](decisions/sqlite-state-locking.md) raises that floor only for the unimplemented target release.
+[`package.json`](../../package.json) is authoritative for dependencies, runtimes, published files and the entry. PR2 raises the checkout's runtime floor to Node `>=24.15.0` under the [SQLite decision](decisions/sqlite-state-locking.md), without changing the package version before release.
 
 The package-owned runtime dependency is exact-pinned `@modelcontextprotocol/client@2.0.0`, providing the MCP v2 client and Streamable HTTP transport. Pi supplies `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui`, and `typebox` as peers with range `*`; concrete development versions support local checks. Any MCP server fixture dependency must remain development-only.
 

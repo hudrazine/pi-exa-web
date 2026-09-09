@@ -12,7 +12,7 @@ Install the package through Pi:
 pi install npm:@hudrazine/pi-exa-web
 ```
 
-The package requires Node.js 22.19.0 or later.
+The next release requires Node.js 24.15.0 or later. The version in this checkout remains `0.1.0` until the release PR updates it.
 
 ## Usage
 
@@ -75,6 +75,14 @@ The key is read and trimmed once when the extension starts. Anonymous and API-ke
 - Failures use package-owned messages without raw upstream errors, headers, or causes.
 - The package does not provide caching, custom endpoints, alternate providers, or configurable retry settings.
 
+## State storage foundation (unreleased)
+
+The checkout includes private storage for upcoming OAuth and routing settings. Current web tools do not yet read or write that state, and OAuth management commands are not available.
+
+State belongs in the `exa-web` child of Pi's agent directory, including its override. `settings.json` holds the strategy, `oauth.json` holds revisioned credentials, and `oauth.lock.sqlite` coordinates OAuth updates between processes. API keys are never saved. Settings do not require SQLite; OAuth transactions load Node's release-candidate `node:sqlite` lazily and fail safely if it is disabled.
+
+Storage supports local filesystems only. POSIX state directories use `0700` and secret/temporary files use `0600`; insufficient existing protection prevents saving. Windows uses Pi's inherited ACLs, not POSIX-equivalent modes. Failed replacements preserve committed files. Do not delete or replace coordination databases or journals to clear a lock. The ten-second acquisition budget cannot interrupt synchronous filesystem I/O. Storage does not claim power-loss durability.
+
 ## Troubleshooting
 
 ### The anonymous rate limit was reached
@@ -91,7 +99,7 @@ Confirm that `@hudrazine/pi-exa-web` is installed, then start a new Pi session. 
 
 ### Pi reports an unsupported Node.js version
 
-Use Node.js 22.19.0 or later, matching Pi's current runtime requirement.
+Use Node.js 24.15.0 or later for this checkout and the next release.
 
 ## Development
 
