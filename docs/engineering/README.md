@@ -8,11 +8,11 @@
 | --- | --- | --- |
 | Web tools and anonymous/API-key access | Implemented in `0.1.0` | [Tool contract](design/web-tools.md), [authentication contract](design/anonymous-first.md) |
 | Error secrecy | Required; raw upstream errors remain a known implementation gap | [Errors and secret handling](design/web-tools.md#errors-and-secret-handling) |
-| OAuth login and selectable routing | Proposed for `0.2.0`; implementation not started | [Delivery plan](plans/oauth-routing.md) |
+| OAuth login and selectable routing | Accepted for `0.2.0`; implementation not started | [Delivery plan](plans/oauth-routing.md) |
 | SQLite state coordination and higher Node.js minimum | Accepted for `0.2.0`; not implemented | [Decision and rationale](decisions/sqlite-state-locking.md), [lock contract](design/oauth-state-locking.md) |
 | Changesets release automation | Implemented; first managed publication unverified | [Remaining release verification](plans/changesets-release-automation.md) |
 
-“Proposed” defines a candidate design. “Accepted” identifies a selected decision and its constraints. Neither means implemented or verified. The accepted SQLite decision does not accept the whole OAuth proposal.
+“Accepted” identifies a selected design and its constraints, not implemented or verified behavior. OAuth login, both routing strategies, and their state lifecycle are accepted for `0.2.0`; implementation and verification remain pending.
 
 ## Understand and Maintain the Package
 
@@ -29,12 +29,12 @@ User installation and usage belong in the [package README](../../README.md). [Pa
 
 ## Plan and Evaluate Work
 
-The [OAuth delivery plan](plans/oauth-routing.md) defines remaining stages and dependencies. Its candidate behavior is specified by the [routing and management proposal](proposals/oauth-routing.md) and [OAuth lifecycle and state proposal](proposals/oauth-state.md). The [verification specification](plans/oauth-verification.md) covers local acceptance cases, supported-runtime checks, and Hosted release conditions.
+The [OAuth delivery plan](plans/oauth-routing.md) defines remaining stages and dependencies. Its accepted behavior is specified by the [routing and management design](proposals/oauth-routing.md) and [OAuth lifecycle and state design](proposals/oauth-state.md), retained at their existing proposal paths. The [verification specification](plans/oauth-verification.md) covers local acceptance cases, supported-runtime checks, and Hosted release conditions.
 
 The [Changesets verification plan](plans/changesets-release-automation.md) covers the next authorized managed publication independently of OAuth work.
 
 ## Understand Decisions and Evidence
 
-The [SQLite decision record](decisions/sqlite-state-locking.md) preserves the coordination choice, runtime tradeoff, and limits. Other design reasons appear beside the relevant current or proposed contract.
+The [SQLite decision record](decisions/sqlite-state-locking.md) preserves the coordination choice, runtime tradeoff, and limits. Other design reasons appear beside the relevant implemented or accepted contract.
 
-[Initial release verification](records/initial-release.md) preserves artifact identity, package-name migration, and completed publication checks. Historical results do not describe current registry tags or prove the proposed feature works.
+[Initial release verification](records/initial-release.md) preserves artifact identity, package-name migration, and completed publication checks. Historical results do not describe current registry tags or prove the accepted OAuth feature works.

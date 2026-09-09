@@ -1,9 +1,8 @@
-# v0.2.0 OAuth and Routing Design Proposal
+# v0.2.0 OAuth and Routing Design
 
-**Status:** Proposed; not implemented  
-**Target:** `@hudrazine/pi-exa-web@0.2.0`
+**Status:** Accepted for `0.2.0`; not implemented or verified **Target:** `@hudrazine/pi-exa-web@0.2.0`
 
-This document defines the proposed behavior and its source-backed rationale. The [implementation plan](../plans/oauth-routing.md) owns delivery; the [verification specification](../plans/oauth-verification.md) owns acceptance checks. The [current architecture](../architecture.md) describes implemented `0.1.0` behavior. The [OAuth state proposal](oauth-state.md) defines login, refresh, and persistence. The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is accepted; implementation is pending.
+This document defines the behavior and source-backed rationale accepted on 2026-09-09. The [implementation plan](../plans/oauth-routing.md) owns delivery; the [verification specification](../plans/oauth-verification.md) owns acceptance checks. The [current architecture](../architecture.md) describes implemented `0.1.0` behavior. The accepted [OAuth state design](oauth-state.md) defines login, refresh, and persistence. The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is also accepted; implementation and verification remain pending.
 
 ## Purpose and Scope
 
@@ -37,7 +36,7 @@ Read `EXA_API_KEY` once at extension initialization and trim it. Do not persist 
 
 Retain the existing Pi tool registration and rendering boundary. Extend the private client with management operations as needed; do not make that interface a supported import surface.
 
-| Responsibility | Proposed ownership |
+| Responsibility | Ownership |
 | --- | --- |
 | Extension entry and commands | Read Pi environment/directory, register tools and `/exa`, translate UI and cancellation, close on shutdown. |
 | Tool registration and renderer | Preserve tool schemas and text contract; add safe OAuth/fallback display. |
@@ -88,7 +87,7 @@ Each logical tool call allows one primary route and at most one fallback. Intern
 
 ### Anonymous Probe and Cooldown
 
-Use these proposed private policy constants; they express package policy, not Exa quota values:
+Use these accepted private policy constants; they express package policy, not Exa quota values:
 
 | Setting                                 | Value                       |
 | --------------------------------------- | --------------------------- |

@@ -1,9 +1,8 @@
-# OAuth Lifecycle and State Proposal
+# OAuth Lifecycle and State Design
 
-**Status:** Proposed; not implemented  
-**Target:** `@hudrazine/pi-exa-web@0.2.0`
+**Status:** Accepted for `0.2.0`; not implemented or verified **Target:** `@hudrazine/pi-exa-web@0.2.0`
 
-This document defines proposed OAuth lifecycle, storage, and cross-process transaction behavior. The [routing proposal](oauth-routing.md) owns route selection, command behavior, error classification, and connection lifecycle. The [implementation plan](../plans/oauth-routing.md) owns delivery; the [verification specification](../plans/oauth-verification.md) owns acceptance checks. The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is accepted for this target; the surrounding OAuth feature remains proposed.
+This document defines OAuth lifecycle, storage, and cross-process transaction behavior accepted on 2026-09-09. The accepted [routing design](oauth-routing.md) owns route selection, command behavior, error classification, and connection lifecycle. The [implementation plan](../plans/oauth-routing.md) owns delivery; the [verification specification](../plans/oauth-verification.md) owns acceptance checks. The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is also accepted for this target; implementation and verification remain pending.
 
 ## OAuth Lifecycle
 
@@ -38,7 +37,7 @@ Persist only on explicit strategy writes, successful OAuth commits, or required 
 | `settings.json` | `version`, monotonically increasing `revision`, `strategy` |
 | `oauth.json` | `version`, monotonically increasing `revision`, `credentials` (null when logged out) |
 
-The OAuth credentials record is proposed to hold SDK-required tokens/expiry, client registration, discovery data tied to the configured resource/issuer, and whether a terminal refresh rejection requires login. Persist discovery only as supported by the verified SDK representation; pin its private serialization with fixtures. Do not persist API keys, authorization URLs/codes, PKCE verifier, or OAuth state. Preserve a null-credentials revision on logout rather than deleting the file, avoiding revision reuse after logout/re-login. An absent file has revision zero. No per-request revision write is needed when credentials do not change.
+The OAuth credentials record holds SDK-required tokens/expiry, client registration, discovery data tied to the configured resource/issuer, and whether a terminal refresh rejection requires login. Persist discovery only as supported by the verified SDK representation; pin its private serialization with fixtures. Do not persist API keys, authorization URLs/codes, PKCE verifier, or OAuth state. Preserve a null-credentials revision on logout rather than deleting the file, avoiding revision reuse after logout/re-login. An absent file has revision zero. No per-request revision write is needed when credentials do not change.
 
 ### Transactions and Revisions
 

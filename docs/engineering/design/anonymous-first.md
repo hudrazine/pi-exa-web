@@ -1,6 +1,6 @@
 # Anonymous-first Authentication
 
-The implemented `0.1.0` policy starts tool calls anonymously and uses `EXA_API_KEY` only after an anonymous rate limit. The key is read once at extension initialization, trimmed, and never persisted. This contract does not include the [proposed OAuth strategies](../proposals/oauth-routing.md).
+The implemented `0.1.0` policy starts tool calls anonymously and uses `EXA_API_KEY` only after an anonymous rate limit. The key is read once at extension initialization, trimmed, and never persisted. This contract does not include the [accepted, unimplemented OAuth strategies](../proposals/oauth-routing.md).
 
 ## Eligible Requests and Credentials
 

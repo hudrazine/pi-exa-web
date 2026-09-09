@@ -1,9 +1,8 @@
 # v0.2.0 OAuth and Routing Implementation Plan
 
-**Status:** Active planning; implementation not started  
-**Target:** `@hudrazine/pi-exa-web@0.2.0`
+**Status:** Accepted scope; implementation not started **Target:** `@hudrazine/pi-exa-web@0.2.0`
 
-This plan defines delivery order and completion for the proposed OAuth feature. The [routing proposal](../proposals/oauth-routing.md) and [state proposal](../proposals/oauth-state.md) define its behavior; the [verification specification](oauth-verification.md) owns acceptance checks. The full feature remains proposed. Only the [SQLite coordination decision](../decisions/sqlite-state-locking.md) and its lock contract are accepted.
+This plan defines delivery order and completion for the OAuth feature accepted on 2026-09-09. The accepted [routing design](../proposals/oauth-routing.md) and [state design](../proposals/oauth-state.md) define its behavior; the [verification specification](oauth-verification.md) owns acceptance checks. Acceptance includes both strategies and the OAuth lifecycle, alongside the previously accepted [SQLite coordination decision](../decisions/sqlite-state-locking.md) and its lock contract. Implementation and verification remain pending.
 
 ## Scope and Dependencies
 
@@ -17,7 +16,7 @@ Prefer official contracts, pinned source, and explicit inference over separate f
 
 ## Implementation Sequence
 
-The following stages describe implementation of the proposal; their order does not change its acceptance status. Each stage uses the [verification specification](oauth-verification.md).
+The following stages implement the accepted design. Each stage uses the [verification specification](oauth-verification.md).
 
 ### 1. Private Connections and Fixtures
 
@@ -29,7 +28,7 @@ The following stages describe implementation of the proposal; their order does n
 
 - [ ] Implement both strategies, authenticated-route resolution, classifiers, probe/cooldown policy, and retry budgets from the design.
 - [ ] Retain initialization-time API-key reading and attach credentials only to their route connection.
-- [ ] Verify proposed no-header probing, cooldown bypass without usable credentials, and route-specific connections against their proposal contracts; retain other current regression requirements.
+- [ ] Verify accepted no-header probing, cooldown bypass without usable credentials, and route-specific connections against their design contracts; retain other current regression requirements.
 
 ### 3. Persistent State and OAuth
 

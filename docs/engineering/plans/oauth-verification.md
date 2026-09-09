@@ -1,8 +1,8 @@
 # OAuth and Routing Verification
 
-**Status:** Required checks for proposed `0.2.0`; not executed for this feature
+**Status:** Required checks for accepted `0.2.0` design; not executed for this feature
 
-This document owns local acceptance cases, runtime coverage, and the Hosted release smoke for the [implementation plan](oauth-routing.md). The [routing proposal](../proposals/oauth-routing.md), [state proposal](../proposals/oauth-state.md), and accepted [SQLite lock contract](../design/oauth-state-locking.md) supply the expectations. Verification requirements do not imply that the whole OAuth proposal has been accepted or implemented.
+This document owns local acceptance cases, runtime coverage, and the Hosted release smoke for the [implementation plan](oauth-routing.md). The accepted [routing design](../proposals/oauth-routing.md), [state design](../proposals/oauth-state.md), and [SQLite lock contract](../design/oauth-state-locking.md) supply the expectations. Design acceptance does not establish implementation or successful verification.
 
 ## Local Verification
 

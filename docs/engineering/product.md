@@ -22,6 +22,6 @@ Advanced Exa search, Agent features, direct Exa API integration, alternate provi
 
 ## Development Direction
 
-OAuth login and selectable access strategies are proposed for `0.2.0`, not accepted or implemented as a complete feature. The SQLite coordination mechanism and its higher Node.js minimum are accepted for that target. The [OAuth plan](plans/oauth-routing.md) distinguishes these states and links to the proposed contracts.
+OAuth login and selectable access strategies are accepted for `0.2.0`, together with the OAuth state lifecycle, SQLite coordination mechanism, and higher Node.js minimum. Implementation and verification have not started. The [OAuth plan](plans/oauth-routing.md) defines delivery and links to the accepted contracts.
 
 Changesets release automation is implemented. Its first complete managed publication remains an independent [verification task](plans/changesets-release-automation.md).
