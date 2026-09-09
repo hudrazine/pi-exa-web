@@ -7,7 +7,7 @@
 | Area | State | Where to read |
 | --- | --- | --- |
 | Web tools and anonymous/API-key access | Implemented in `0.1.0` | [Tool contract](design/web-tools.md), [authentication contract](design/anonymous-first.md) |
-| Error secrecy | Required; raw upstream errors remain a known implementation gap | [Errors and secret handling](design/web-tools.md#errors-and-secret-handling) |
+| Safe errors and route-specific connections | Implemented locally in unreleased PR1; awaiting review/merge | [Errors and secret handling](design/web-tools.md#errors-and-secret-handling) |
 | OAuth login and selectable routing | Accepted for `0.2.0`; implementation not started | [Delivery plan](plans/oauth-routing.md) |
 | SQLite OAuth coordination and higher Node.js minimum | Accepted for `0.2.0`; not implemented | [Decision and rationale](decisions/sqlite-state-locking.md), [lock contract](design/oauth-state-locking.md) |
 | Changesets release automation | Implemented; first managed publication unverified | [Remaining release verification](plans/changesets-release-automation.md) |

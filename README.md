@@ -63,7 +63,7 @@ PowerShell:
 $env:EXA_API_KEY = "your-api-key"
 ```
 
-The key is sent as an `x-api-key` header only for authenticated Exa tool calls. It is not placed in request URLs. Search queries and fetched URLs are sent to Exa Hosted MCP to perform the requested operation.
+The key is read and trimmed once when the extension starts. Anonymous and API-key access use separate connections; the key is sent as an `x-api-key` header on the API-key connection, including initialization. It is not placed in request URLs. Search queries and fetched URLs are sent to Exa Hosted MCP to perform the requested operation.
 
 ## Behavior and limitations
 
@@ -71,6 +71,8 @@ The key is sent as an `x-api-key` header only for authenticated Exa tool calls. 
 - `web_fetch` accepts one URL per call.
 - Anonymous rate-limit state is kept only in the current extension process and resets when the process ends.
 - Cancellation is forwarded to the active Exa tool request.
+- An expired MCP session is reconnected once only when Exa returns HTTP 404 for a request carrying a server-issued session ID. Other transport failures are not automatically replayed.
+- Failures use package-owned messages without raw upstream errors, headers, or causes.
 - The package does not provide caching, custom endpoints, alternate providers, or configurable retry settings.
 
 ## Troubleshooting

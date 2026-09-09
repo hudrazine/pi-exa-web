@@ -1,20 +1,39 @@
 import {
   Client,
+  ProtocolError,
+  SdkError,
+  SdkErrorCode,
   StreamableHTTPClientTransport,
   type CallToolResult,
+  type FetchLike,
 } from "@modelcontextprotocol/client";
-import { setTimeout as delay } from "node:timers/promises";
+import { AsyncLocalStorage } from "node:async_hooks";
 import packageJson from "../package.json" with { type: "json" };
-import { createAnonymousFirstPolicy } from "./anonymous-first.ts";
+import { createAnonymousFirstPolicy, type AuthRoute } from "./anonymous-first.ts";
+import { ExaError, readRetryAt, safeError } from "./errors.ts";
 import type { ExaWebClient } from "./register-tools.ts";
 
 const EXA_MCP_ENDPOINT = new URL("https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa");
-const CLOSED_MESSAGE = "pi-exa-web MCP client is closed";
 const SESSION_TERMINATION_GRACE_MS = 1_000;
 
 interface Connection {
   client: Client;
   transport: StreamableHTTPClientTransport;
+  disposing?: Promise<void>;
+  users: number;
+  retired?: boolean;
+}
+
+interface RouteState {
+  connection?: Connection;
+  connecting?: Promise<Connection>;
+}
+
+interface Observation {
+  phase: "connect" | "tool";
+  failure?: ExaError;
+  expiredSession?: boolean;
+  signal?: AbortSignal;
 }
 
 export interface ExaMcpClient extends ExaWebClient {
@@ -22,103 +41,203 @@ export interface ExaMcpClient extends ExaWebClient {
 }
 
 export function createExaMcpClient(
-  options: {
-    endpoint?: URL;
-    apiKey?: string;
-  } = {},
+  options: { endpoint?: URL; apiKey?: string } = {},
 ): ExaMcpClient {
   const endpoint = options.endpoint ?? EXA_MCP_ENDPOINT;
-  const policy = createAnonymousFirstPolicy({ fetch: globalThis.fetch, apiKey: options.apiKey });
-  let connection: Connection | undefined;
-  let connecting: Promise<Connection> | undefined;
-  let pendingConnection: Connection | undefined;
-  let closed = false;
+  const apiKey = options.apiKey?.trim() || undefined;
+  const policy = createAnonymousFirstPolicy(apiKey !== undefined);
+  const routes: Record<AuthRoute, RouteState> = { anonymous: {}, "api-key": {} };
+  const observations = new AsyncLocalStorage<Observation>();
+  const resources = new Set<Connection>();
+  const lifecycle = new AbortController();
+  const baseFetch = globalThis.fetch;
   let closePromise: Promise<void> | undefined;
 
-  async function connect(): Promise<Connection> {
+  function routeFetch(route: AuthRoute): FetchLike {
+    return async (input, init) => {
+      const headers = new Headers(init?.headers);
+      if (route === "api-key" && apiKey !== undefined) headers.set("x-api-key", apiKey);
+      const termination = init?.method === "DELETE";
+      const context = observations.getStore();
+      const method = requestMethod(init);
+      const signals = [
+        ...(init?.signal ? [init.signal] : []),
+        ...(termination ? [] : [lifecycle.signal]),
+        ...(method === "tools/call" && context?.signal ? [context.signal] : []),
+      ];
+      const signal = AbortSignal.any(signals);
+      signal.throwIfAborted();
+      // Background SSE and notifications must not overwrite the invoking request's evidence.
+      const observed =
+        context !== undefined &&
+        (context.phase === "tool"
+          ? method === "tools/call"
+          : method === "initialize" || method === "server/discover");
+      if (observed) {
+        context.failure = undefined;
+        context.expiredSession = false;
+      }
+      const response = await baseFetch(input, { ...init, headers, signal });
+      if (observed && !response.ok) {
+        const status = response.status;
+        const code =
+          status === 429
+            ? route === "api-key"
+              ? "authenticated-rate-limit"
+              : method === "tools/call"
+                ? "anonymous-rate-limit"
+                : "transport"
+            : status === 401
+              ? "authentication"
+              : status === 403
+                ? "permission"
+                : status >= 500 && status <= 599
+                  ? "server"
+                  : "transport";
+        context.failure = new ExaError(
+          code,
+          status === 429 ? readRetryAt(response.headers, Date.now()) : undefined,
+        );
+        context.expiredSession =
+          status === 404 && method === "tools/call" && headers.has("mcp-session-id");
+      }
+      return response;
+    };
+  }
+
+  async function connect(route: AuthRoute): Promise<Connection> {
     const candidate: Connection = {
+      users: 0,
       client: new Client(
         { name: "pi-exa-web", version: packageJson.version },
         { versionNegotiation: { mode: "auto" } },
       ),
-      transport: new StreamableHTTPClientTransport(endpoint, { fetch: policy.fetch }),
+      transport: new StreamableHTTPClientTransport(endpoint, { fetch: routeFetch(route) }),
     };
-    pendingConnection = candidate;
-
+    resources.add(candidate);
+    const context: Observation = { phase: "connect" };
     try {
-      await candidate.client.connect(candidate.transport);
-      if (closed) {
-        throw new Error(CLOSED_MESSAGE);
-      }
-      connection = candidate;
+      await observations.run(context, () => candidate.client.connect(candidate.transport));
+      lifecycle.signal.throwIfAborted();
+      routes[route].connection = candidate;
       return candidate;
     } catch (error) {
       await dispose(candidate);
-      throw error;
-    } finally {
-      if (pendingConnection === candidate) {
-        pendingConnection = undefined;
-      }
+      lifecycle.signal.throwIfAborted();
+      throw context.failure ?? classify(error);
     }
   }
 
-  async function getConnection(signal: AbortSignal | undefined): Promise<Connection> {
-    throwIfAborted(signal);
-    if (closed) {
-      throw new Error(CLOSED_MESSAGE);
+  async function getConnection(route: AuthRoute, signal: AbortSignal): Promise<Connection> {
+    signal.throwIfAborted();
+    const state = routes[route];
+    let active = state.connection;
+    if (active === undefined) {
+      state.connecting ??= connect(route).finally(() => {
+        state.connecting = undefined;
+      });
+      active = await waitForSignal(state.connecting, signal);
     }
-    if (connection !== undefined) {
-      return connection;
-    }
-
-    connecting ??= connect().finally(() => {
-      connecting = undefined;
-    });
-    return waitForSignal(connecting, signal);
+    signal.throwIfAborted();
+    if (active.retired) return getConnection(route, signal);
+    // Reserve before returning across the await boundary so retirement cannot close a new user.
+    active.users++;
+    return active;
   }
 
   async function call(
     name: "web_search_exa" | "web_fetch_exa",
     args: Record<string, unknown>,
-    signal: AbortSignal | undefined,
-  ): Promise<{ text: string; auth: "anonymous" | "api-key" }> {
-    const active = await getConnection(signal);
-    if (closed) {
-      throw new Error(CLOSED_MESSAGE);
+    callerSignal: AbortSignal | undefined,
+  ): Promise<{ text: string; auth: AuthRoute }> {
+    const signal = AbortSignal.any([
+      lifecycle.signal,
+      ...(callerSignal === undefined ? [] : [callerSignal]),
+    ]);
+    // A probe is still part of the same route attempt: reconnection cannot reset its budget.
+    const recovered = new Set<AuthRoute>();
+    async function attempt(route: AuthRoute): Promise<CallToolResult> {
+      for (;;) {
+        signal.throwIfAborted();
+        const active = await getConnection(route, signal);
+        const context: Observation = { phase: "tool", signal };
+        try {
+          signal.throwIfAborted();
+          return await observations.run(context, () =>
+            active.client.callTool({ name, arguments: args }, { signal }),
+          );
+        } catch (error) {
+          signal.throwIfAborted();
+          if (context.expiredSession) {
+            if (routes[route].connection === active) routes[route].connection = undefined;
+            active.retired = true;
+            if (!recovered.has(route)) {
+              recovered.add(route);
+              continue;
+            }
+          }
+          throw context.failure ?? classify(error);
+        } finally {
+          active.users--;
+          if (active.retired && active.users === 0) await dispose(active);
+        }
+      }
     }
+    try {
+      const { result, auth } = await policy.run(attempt, signal);
+      signal.throwIfAborted();
+      return { text: readText(result), auth };
+    } catch (error) {
+      signal.throwIfAborted();
+      throw safeError(error);
+    }
+  }
 
-    const { result, auth } = await policy.run(() =>
-      active.client.callTool({ name, arguments: args }, { signal }),
-    );
-    return { text: readText(result), auth };
+  function dispose(connection: Connection): Promise<void> {
+    connection.disposing ??= (async () => {
+      try {
+        await connection.client.close();
+      } catch {
+        // Always attempt transport cleanup as well.
+      }
+      try {
+        await connection.transport.close();
+      } catch {
+        // Cleanup is best-effort; never expose SDK cleanup exceptions.
+      }
+      resources.delete(connection);
+    })();
+    return connection.disposing;
   }
 
   function close(): Promise<void> {
-    closed = true;
-    closePromise ??= (async () => {
-      const active = connection;
-      connection = undefined;
-      if (active !== undefined) {
-        try {
-          await Promise.race([
-            active.transport.terminateSession(),
-            delay(SESSION_TERMINATION_GRACE_MS, undefined, { ref: false }),
-          ]);
-        } catch {
-          // Session termination is best-effort during Pi shutdown.
-        } finally {
-          await dispose(active);
-        }
-      }
-
-      const pending = pendingConnection;
-      if (pending !== undefined) {
-        await dispose(pending);
-      }
+    if (closePromise !== undefined) return closePromise;
+    lifecycle.abort(new ExaError("lifecycle"));
+    policy.clear();
+    closePromise = (async () => {
+      const initialized = Object.values(routes).flatMap((state) =>
+        state.connection === undefined ? [] : [state.connection],
+      );
+      for (const state of Object.values(routes)) state.connection = undefined;
+      const pending = [...resources].filter((resource) => !initialized.includes(resource));
+      const pendingCleanup = Promise.all(pending.map(dispose));
+      let timer: ReturnType<typeof setTimeout> | undefined;
       try {
-        await connecting;
-      } catch {
-        // Closing a handshake is expected to reject its shared promise.
+        await Promise.race([
+          Promise.allSettled(initialized.map((active) => active.transport.terminateSession())),
+          new Promise<void>((resolve) => {
+            timer = setTimeout(resolve, SESSION_TERMINATION_GRACE_MS);
+          }),
+        ]);
+      } finally {
+        clearTimeout(timer);
+        await Promise.all([...resources].map(dispose));
+        await pendingCleanup;
+        await Promise.allSettled(
+          Object.values(routes).flatMap((state) =>
+            state.connecting === undefined ? [] : [state.connecting],
+          ),
+        );
       }
     })();
     return closePromise;
@@ -151,7 +270,21 @@ export function createExaMcpClient(
   };
 }
 
+function classify(error: unknown): ExaError {
+  return error instanceof ProtocolError ||
+    (error instanceof SdkError && error.code === SdkErrorCode.InvalidResult)
+    ? new ExaError("tool")
+    : safeError(error);
+}
+
+function requestMethod(init: RequestInit | undefined): unknown {
+  if (init?.method !== "POST" || typeof init.body !== "string") return undefined;
+  const body: unknown = JSON.parse(init.body);
+  return typeof body === "object" && body !== null ? Reflect.get(body, "method") : undefined;
+}
+
 function readText(result: CallToolResult): string {
+  if (result.isError === true) throw new ExaError("tool");
   const text = result.content
     .filter(
       (block): block is Extract<(typeof result.content)[number], { type: "text" }> =>
@@ -159,45 +292,16 @@ function readText(result: CallToolResult): string {
     )
     .map((block) => block.text)
     .join("\n\n");
-
-  if (result.isError === true) {
-    throw new Error(text || "Exa MCP tool call failed without an error message");
-  }
-  if (text === "") {
-    throw new Error("Exa MCP returned an unexpected response without text content");
-  }
+  if (text === "") throw new ExaError("tool");
   return text;
 }
 
-async function dispose(connection: Connection): Promise<void> {
-  try {
-    await connection.client.close();
-  } catch {
-    // Cleanup continues with the transport below.
-  }
-  try {
-    await connection.transport.close();
-  } catch {
-    // Cleanup is best-effort after connection failure or shutdown.
-  }
-}
-
-function throwIfAborted(signal: AbortSignal | undefined): void {
-  if (signal?.aborted === true) {
-    throw signal.reason;
-  }
-}
-
-function waitForSignal<T>(promise: Promise<T>, signal: AbortSignal | undefined): Promise<T> {
-  if (signal === undefined) {
-    return promise;
-  }
-  throwIfAborted(signal);
-
+function waitForSignal<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  signal.throwIfAborted();
   return new Promise<T>((resolve, reject) => {
     function abort(): void {
-      signal?.removeEventListener("abort", abort);
-      reject(signal?.reason);
+      signal.removeEventListener("abort", abort);
+      reject(signal.reason);
     }
     signal.addEventListener("abort", abort, { once: true });
     promise.then(

@@ -7,6 +7,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { Text, stripTerminalSequences, truncateToWidth } from "@earendil-works/pi-tui";
 import { type Static, Type } from "typebox";
+import { safeError } from "./errors.ts";
 
 const searchParameters = Type.Object({
   query: Type.String({ description: "Natural-language web search query" }),
@@ -211,9 +212,11 @@ async function runToolOperation<T>(
     return await operation();
   } catch (error) {
     if (signal?.aborted === true) {
-      throw new Error("Operation aborted", { cause: error });
+      // The abort reason remains internal; Pi must never receive its raw cause.
+      // oxlint-disable-next-line preserve-caught-error
+      throw new Error("Operation aborted");
     }
-    throw error;
+    throw safeError(error);
   }
 }
 

@@ -1,12 +1,12 @@
 # v0.2.0 OAuth and Routing Implementation Plan
 
-**Status:** Accepted scope; implementation not started **Target:** `@hudrazine/pi-exa-web@0.2.0`
+**Status:** PR1 foundation implemented locally; remaining stages pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
 
-This plan defines delivery order and completion for the OAuth feature accepted on 2026-09-09. The accepted [routing design](../proposals/oauth-routing.md) and [state design](../proposals/oauth-state.md) define its behavior; the [verification specification](oauth-verification.md) owns acceptance checks. Acceptance includes both strategies and the OAuth lifecycle, alongside the previously accepted [SQLite coordination decision](../decisions/sqlite-state-locking.md) and its lock contract. Implementation and verification remain pending.
+This plan defines delivery order and completion for the OAuth feature accepted on 2026-09-09. The accepted [routing design](../proposals/oauth-routing.md) and [state design](../proposals/oauth-state.md) define its behavior; the [verification specification](oauth-verification.md) owns acceptance checks. Acceptance includes both strategies and the OAuth lifecycle, alongside the previously accepted [SQLite coordination decision](../decisions/sqlite-state-locking.md) and its lock contract. Full feature implementation and verification remain pending.
 
 ## Scope and Dependencies
 
-The [implemented `0.1.0` architecture](../architecture.md) uses one MCP connection with anonymous-first HTTP replay and `EXA_API_KEY` only. There are no saved OAuth credentials or settings to migrate. Existing tool, renderer, rate-limit, concurrency, and lifecycle tests provide the regression baseline.
+The [current architecture](../architecture.md) includes unreleased PR1: safe errors and route-specific connections, with anonymous-first intent execution and `EXA_API_KEY` only. There are no saved OAuth credentials or settings to migrate. Existing tool, renderer, rate-limit, concurrency, and lifecycle tests provide the regression baseline.
 
 The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is accepted, including the target Node.js minimum; [package.json](../../../package.json) defines the implemented runtime requirement.
 
@@ -22,9 +22,10 @@ The following stages implement the accepted design. Each stage uses the [verific
 
 ### 1. Private Connections and Fixtures
 
-- [ ] Introduce lazy route-specific connections and move routing from HTTP-body replay to the intent-level executor. Keep raw HTTP observation in transport middleware.
-- [ ] Add package-owned safe errors, shared-connection cancellation, and shutdown handling.
-- [ ] Exact-pin the reviewed MCP client `2.0.0` (currently `^2.0.0`). Add local fake MCP/authorization services and only the private test seams needed to exercise the real SDK. Any matching server fixture dependency must be exact-pinned and development-only.
+- [x] Introduce lazy route-specific connections and move routing from HTTP-body replay to the intent-level executor. Keep raw HTTP observation in transport middleware.
+- [x] Add package-owned safe errors, shared-connection cancellation, and shutdown handling.
+- [x] Exact-pin the reviewed MCP client `2.0.0` and extend local HTTP fixtures for real-SDK MCP checks without adding dependencies.
+- [ ] Add local fake authorization services with the OAuth tickets. Any matching server fixture dependency must be exact-pinned and development-only.
 
 ### 2. Anonymous and API-key Routing
 

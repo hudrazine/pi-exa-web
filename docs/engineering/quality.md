@@ -1,6 +1,6 @@
 # Quality and Development
 
-Changes must preserve the [product requirements](product.md), [tool contract](design/web-tools.md), and [authentication policy](design/anonymous-first.md). Normal checks use local transports and deterministic timing; they must not depend on Hosted Exa availability or consume its quota. The [OAuth verification specification](plans/oauth-verification.md) defines checks for the unimplemented target feature.
+Changes must preserve the [product requirements](product.md), [tool contract](design/web-tools.md), and [authentication policy](design/anonymous-first.md). Normal checks use local transports and deterministic timing; they must not depend on Hosted Exa availability or consume its quota. The [OAuth verification specification](plans/oauth-verification.md) defines checks for the target feature; PR1's connection and safe-error subset is implemented, with OAuth/state checks still pending.
 
 ## Local Workflow
 
@@ -21,9 +21,9 @@ vp run test
 | Pi contract | Names, schemas, bounds, argument mapping, optional omission, successful content/details, thrown errors | [`tests/index.test.ts`](../../tests/index.test.ts) |
 | Display | Pending, success, error, cancellation, collapsed/expanded output, requested-count labels; real Pi `ToolExecutionComponent` coverage without unstable style snapshots | [`tests/index.test.ts`](../../tests/index.test.ts) |
 | Authentication policy | Short/long/no-header 429, header parsing, block expiry, missing key, terminal authenticated failures, abort-aware delay, credential isolation, no retry cycles | [`tests/anonymous-first.test.ts`](../../tests/anonymous-first.test.ts) |
-| SDK integration | Real MCP client/transport against a local server: exact body replay, headers, call-local routes under concurrency, one shared initialization, cancellation, failure recovery, in-flight closure, bounded unresponsive termination, repeated shutdown | [`tests/exa-mcp-client.test.ts`](../../tests/exa-mcp-client.test.ts) |
+| SDK integration | Real MCP client/transport against a local server: intent replay, route-specific headers/sessions, concurrent failure evidence, per-route initialization sharing, HTTP cancellation, session-only recovery, in-flight closure, one shared termination grace, repeated shutdown | [`tests/exa-mcp-client.test.ts`](../../tests/exa-mcp-client.test.ts) |
 
-Test expectations must follow the relevant contract, not private filenames or class structure. Successful text preservation and error secrecy are distinct obligations. The [tool contract](design/web-tools.md#errors-and-secret-handling) owns the current error-handling gap.
+Test expectations must follow the relevant contract, not private filenames or class structure. Successful text preservation and error secrecy are distinct obligations. The [tool contract](design/web-tools.md#errors-and-secret-handling) owns the safe-output boundary. `tests/exa-mcp-client.test.ts` also loads the source through Pi's real loader, checks secret-free error objects and rendering, and writes error results with Pi's SessionManager to verify persisted conversation records.
 
 The current [CI workflow](../../.github/workflows/ci.yml) runs checks and tests on Linux. The [OAuth runtime checks](plans/oauth-verification.md#runtime-and-package-checks) define additional OS/runtime obligations for SQLite; those are not current verified capabilities.
 
