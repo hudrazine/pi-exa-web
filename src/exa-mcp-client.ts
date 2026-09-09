@@ -6,19 +6,28 @@ import {
   StreamableHTTPClientTransport,
   type CallToolResult,
   type FetchLike,
+  type AuthProvider,
 } from "@modelcontextprotocol/client";
 import { AsyncLocalStorage } from "node:async_hooks";
 import packageJson from "../package.json" with { type: "json" };
-import { createAnonymousFirstPolicy, type AuthRoute, type Fallback } from "./anonymous-first.ts";
+import {
+  createAnonymousFirstPolicy,
+  CreditsExhaustedError,
+  type AuthRoute,
+  type Fallback,
+  type RouteResult,
+} from "./anonymous-first.ts";
 import { AnonymousRateLimitError, ExaError, readRetryAt, safeError } from "./errors.ts";
 import { createStateStore } from "./state-store.ts";
-import type { Strategy } from "./state-schema.ts";
+import { oauthResource, type OAuthState, type Strategy } from "./state-schema.ts";
+import { createOAuthState, OAuthUnavailableError, usableOAuth } from "./oauth-state.ts";
 import type { ExaWebClient } from "./register-tools.ts";
 
 const EXA_MCP_ENDPOINT = new URL("https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa");
 const SESSION_TERMINATION_GRACE_MS = 1_000;
 
 interface Connection {
+  oauthState?: OAuthState;
   client: Client;
   transport: StreamableHTTPClientTransport;
   disposing?: Promise<void>;
@@ -36,11 +45,16 @@ interface Observation {
   failure?: ExaError;
   expiredSession?: boolean;
   signal?: AbortSignal;
+  oauthState?: OAuthState;
+  providerFailure?: ExaError;
+  recovery?: { sent: boolean; refreshed: boolean };
+  termination?: boolean;
 }
 
 export interface ExaMcpClient extends ExaWebClient {
   getStrategy(): Promise<Strategy>;
   setStrategy(strategy: Strategy): Promise<Strategy>;
+  logout(signal?: AbortSignal): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -49,13 +63,22 @@ export function createExaMcpClient(
 ): ExaMcpClient {
   const endpoint = options.endpoint ?? EXA_MCP_ENDPOINT;
   const apiKey = options.apiKey?.trim() || undefined;
-  const policy = createAnonymousFirstPolicy(apiKey !== undefined);
   const store = createStateStore();
-  const routes: Record<AuthRoute, RouteState> = { anonymous: {}, "api-key": {} };
+  const routes: Record<AuthRoute, RouteState> = { anonymous: {}, oauth: {}, "api-key": {} };
   const observations = new AsyncLocalStorage<Observation>();
   const resources = new Set<Connection>();
   const lifecycle = new AbortController();
   const baseFetch = globalThis.fetch;
+  const oauth = createOAuthState(store, baseFetch);
+  const policy = createAnonymousFirstPolicy(async (signal) => {
+    try {
+      if (await oauth.resolve(signal)) return "oauth";
+    } catch (error) {
+      signal.throwIfAborted();
+      if (!(error instanceof OAuthUnavailableError)) throw error;
+    }
+    return apiKey === undefined ? undefined : "api-key";
+  });
   let closePromise: Promise<void> | undefined;
 
   function routeFetch(route: AuthRoute): FetchLike {
@@ -82,12 +105,14 @@ export function createExaMcpClient(
         context.failure = undefined;
         context.expiredSession = false;
       }
+      if (route === "oauth" && method === "tools/call" && context?.recovery)
+        context.recovery.sent = true;
       const response = await baseFetch(input, { ...init, headers, signal });
       if (observed && !response.ok) {
         const status = response.status;
         const code =
           status === 429
-            ? route === "api-key"
+            ? route !== "anonymous"
               ? "authenticated-rate-limit"
               : method === "tools/call"
                 ? "anonymous-rate-limit"
@@ -112,44 +137,140 @@ export function createExaMcpClient(
     };
   }
 
-  async function connect(route: AuthRoute): Promise<Connection> {
+  function authProvider(initial: OAuthState): AuthProvider {
+    return {
+      async token() {
+        const context = observations.getStore();
+        // Notifications and termination use the connection's known token, never refresh.
+        const state = context?.oauthState ?? initial;
+        if (context?.termination) return state.credentials?.tokens.access_token;
+        try {
+          (context?.signal ?? lifecycle.signal).throwIfAborted();
+          if (!usableOAuth(state)) throw new OAuthUnavailableError("authentication");
+          return state.credentials!.tokens.access_token;
+        } catch (error) {
+          if (context)
+            context.providerFailure = error instanceof ExaError ? error : safeError(error);
+          throw error;
+        }
+      },
+      async onUnauthorized() {
+        const context = observations.getStore();
+        const signal = context?.signal ?? lifecycle.signal;
+        try {
+          signal.throwIfAborted();
+          if (
+            !context ||
+            context.termination ||
+            !context.oauthState ||
+            !context.recovery ||
+            context.recovery.refreshed
+          )
+            throw new ExaError("authentication");
+          context.recovery.refreshed = true;
+          context.oauthState = await oauth.refresh(context.oauthState.revision, signal);
+          context.failure = undefined;
+        } catch (error) {
+          signal.throwIfAborted();
+          const failure = error instanceof ExaError ? error : safeError(error);
+          if (context) context.providerFailure = failure;
+          throw failure;
+        }
+      },
+    };
+  }
+
+  async function connect(
+    route: AuthRoute,
+    state: OAuthState | undefined,
+    allowUnauthorizedRecovery: boolean,
+  ): Promise<Connection> {
     const candidate: Connection = {
       users: 0,
       client: new Client(
         { name: "pi-exa-web", version: packageJson.version },
         { versionNegotiation: { mode: "auto" } },
       ),
-      transport: new StreamableHTTPClientTransport(endpoint, { fetch: routeFetch(route) }),
+      transport: new StreamableHTTPClientTransport(
+        route === "oauth" ? new URL(oauthResource) : endpoint,
+        {
+          fetch: routeFetch(route),
+          ...(state === undefined
+            ? {}
+            : { authProvider: authProvider(state), onInsufficientScope: "throw" as const }),
+        },
+      ),
+      ...(state === undefined ? {} : { oauthState: state }),
     };
     resources.add(candidate);
-    const context: Observation = { phase: "connect" };
+    const context: Observation = {
+      phase: "connect",
+      signal: lifecycle.signal,
+      oauthState: state,
+      recovery: { sent: false, refreshed: !allowUnauthorizedRecovery },
+    };
     try {
       await observations.run(context, () => candidate.client.connect(candidate.transport));
       lifecycle.signal.throwIfAborted();
+      candidate.oauthState = context.oauthState;
+      if (candidate.retired) {
+        await dispose(candidate);
+        return candidate;
+      }
       routes[route].connection = candidate;
       return candidate;
     } catch (error) {
       await dispose(candidate);
       lifecycle.signal.throwIfAborted();
-      throw context.failure ?? classify(error);
+      const failure = context.providerFailure ?? context.failure ?? classify(error);
+      if (route === "oauth" && failure.code === "authentication")
+        throw new OAuthUnavailableError("authentication");
+      throw failure;
     }
   }
 
-  async function getConnection(route: AuthRoute, signal: AbortSignal): Promise<Connection> {
+  async function getConnection(
+    route: AuthRoute,
+    signal: AbortSignal,
+    recovery: { sent: boolean; refreshed: boolean },
+  ): Promise<Connection> {
     signal.throwIfAborted();
     const state = routes[route];
+    const oauthState = route === "oauth" ? await oauth.resolve(signal) : undefined;
+    if (route === "oauth" && oauthState === undefined)
+      throw new OAuthUnavailableError("authentication");
+    signal.throwIfAborted();
     let active = state.connection;
+    if (active && route === "oauth" && active.oauthState?.revision !== oauthState?.revision) {
+      await retire(route, active);
+      return getConnection(route, signal, recovery);
+    }
     if (active === undefined) {
-      state.connecting ??= connect(route).finally(() => {
+      // A new handshake after session expiry cannot restart spent tool-401 recovery.
+      state.connecting ??= connect(route, oauthState, !recovery.refreshed).finally(() => {
         state.connecting = undefined;
       });
       active = await waitForSignal(state.connecting, signal);
     }
     signal.throwIfAborted();
-    if (active.retired) return getConnection(route, signal);
+    if (active.retired) return getConnection(route, signal, recovery);
+    if (route === "oauth") {
+      const latest = await oauth.read();
+      signal.throwIfAborted();
+      if (active.retired || active.oauthState?.revision !== latest.revision) {
+        await retire(route, active);
+        return getConnection(route, signal, recovery);
+      }
+    }
     // Reserve before returning across the await boundary so retirement cannot close a new user.
     active.users++;
     return active;
+  }
+
+  async function retire(route: AuthRoute, active: Connection): Promise<void> {
+    if (routes[route].connection === active) routes[route].connection = undefined;
+    active.retired = true;
+    if (active.users === 0) await dispose(active);
   }
 
   async function call(
@@ -163,31 +284,42 @@ export function createExaMcpClient(
     ]);
     // A probe is still part of the same route attempt: reconnection cannot reset its budget.
     const recovered = new Set<AuthRoute>();
-    async function attempt(route: AuthRoute): Promise<string> {
+    const recovery = { sent: false, refreshed: false };
+    async function attempt(route: AuthRoute): Promise<RouteResult<string>> {
       for (;;) {
         signal.throwIfAborted();
-        const active = await getConnection(route, signal);
-        const context: Observation = { phase: "tool", signal };
+        let active: Connection | undefined;
+        const context: Observation = { phase: "tool", signal, recovery };
         try {
+          active = await getConnection(route, signal, recovery);
+          context.oauthState = active.oauthState;
           signal.throwIfAborted();
+          const client = active.client;
           const result = await observations.run(context, () =>
-            active.client.callTool({ name, arguments: args }, { signal }),
+            client.callTool({ name, arguments: args }, { signal }),
           );
-          return readText(result, name, route);
+          return { result: readText(result, name, route), auth: route };
         } catch (error) {
           signal.throwIfAborted();
-          if (context.expiredSession) {
-            if (routes[route].connection === active) routes[route].connection = undefined;
-            active.retired = true;
+          const failure = context.providerFailure ?? context.failure ?? classify(error);
+          if (route === "oauth" && !recovery.sent && failure instanceof OAuthUnavailableError) {
+            if (apiKey !== undefined) return attempt("api-key");
+            throw failure;
+          }
+          if (context.expiredSession && active) {
+            await retire(route, active);
             if (!recovered.has(route)) {
               recovered.add(route);
               continue;
             }
           }
-          throw context.failure ?? classify(error);
+          // After a send even refresh errors are terminal, not alternate-credential selection.
+          throw failure instanceof OAuthUnavailableError ? safeError(failure) : failure;
         } finally {
-          active.users--;
-          if (active.retired && active.users === 0) await dispose(active);
+          if (active) {
+            active.users--;
+            if (active.retired && active.users === 0) await dispose(active);
+          }
         }
       }
     }
@@ -235,7 +367,14 @@ export function createExaMcpClient(
       let timer: ReturnType<typeof setTimeout> | undefined;
       try {
         await Promise.race([
-          Promise.allSettled(initialized.map((active) => active.transport.terminateSession())),
+          Promise.allSettled(
+            initialized.map((active) =>
+              observations.run(
+                { phase: "connect", termination: true, oauthState: active.oauthState },
+                () => active.transport.terminateSession(),
+              ),
+            ),
+          ),
           new Promise<void>((resolve) => {
             timer = setTimeout(resolve, SESSION_TERMINATION_GRACE_MS);
           }),
@@ -244,6 +383,7 @@ export function createExaMcpClient(
         clearTimeout(timer);
         await Promise.all([...resources].map(dispose));
         await pendingCleanup;
+        await oauth.settled();
         await Promise.allSettled(
           Object.values(routes).flatMap((state) =>
             state.connecting === undefined ? [] : [state.connecting],
@@ -255,6 +395,18 @@ export function createExaMcpClient(
   }
 
   return {
+    async logout(callerSignal) {
+      const signal = AbortSignal.any([lifecycle.signal, ...(callerSignal ? [callerSignal] : [])]);
+      signal.throwIfAborted();
+      const committed = await oauth.logout(signal);
+      // Include shared initialization even when every caller has stopped waiting for it.
+      for (const connection of resources) {
+        if (connection.oauthState && connection.oauthState.revision < committed.revision)
+          connection.retired = true;
+      }
+      const active = routes.oauth.connection;
+      if (active?.retired) await retire("oauth", active);
+    },
     async getStrategy() {
       lifecycle.signal.throwIfAborted();
       const { strategy } = await store.readSettings();
@@ -292,6 +444,8 @@ export function createExaMcpClient(
 }
 
 function classify(error: unknown): ExaError {
+  if (error instanceof OAuthUnavailableError || error instanceof CreditsExhaustedError)
+    return error;
   return error instanceof ProtocolError ||
     (error instanceof SdkError && error.code === SdkErrorCode.InvalidResult)
     ? new ExaError("tool")
@@ -307,8 +461,8 @@ function requestMethod(init: RequestInit | undefined): unknown {
 function readText(result: CallToolResult, name: string, route: AuthRoute): string {
   if (result.isError === true) {
     const first = result.content.find((block) => block.type === "text");
-    if (route === "api-key" && first?.type === "text") {
-      if (first.text.startsWith(`${name} error (402):`)) throw new ExaError("credits-exhausted");
+    if (route !== "anonymous" && first?.type === "text") {
+      if (first.text.startsWith(`${name} error (402):`)) throw new CreditsExhaustedError(route);
       if (first.text.startsWith(`${name} error (429):`))
         throw new ExaError("authenticated-rate-limit");
     }

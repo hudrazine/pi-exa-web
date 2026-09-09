@@ -200,7 +200,7 @@ function readTextContent(result: AgentToolResult<unknown>): string {
   );
 }
 
-function readAuthRoute(details: unknown): "anonymous" | "API key" | undefined {
+function readAuthRoute(details: unknown): "anonymous" | "OAuth" | "API key" | undefined {
   if (typeof details !== "object" || details === null) {
     return undefined;
   }
@@ -208,6 +208,7 @@ function readAuthRoute(details: unknown): "anonymous" | "API key" | undefined {
   if (auth === "anonymous") {
     return "anonymous";
   }
+  if (auth === "oauth") return "OAuth";
   return auth === "api-key" ? "API key" : undefined;
 }
 
@@ -218,10 +219,18 @@ function readFallback(details: unknown): string | undefined {
   const from = readAuthRoute({ auth: Reflect.get(fallback, "from") });
   const to = readAuthRoute({ auth: Reflect.get(fallback, "to") });
   const reason: unknown = Reflect.get(fallback, "reason");
-  if (from === "anonymous" && to === "API key" && reason === "anonymous-rate-limit")
-    return "Fallback: anonymous → API key · anonymous rate limit";
-  if (from === "API key" && to === "anonymous" && reason === "credits-exhausted")
-    return "Fallback: API key → anonymous · account credits exhausted";
+  if (
+    from === "anonymous" &&
+    (to === "API key" || to === "OAuth") &&
+    reason === "anonymous-rate-limit"
+  )
+    return `Fallback: anonymous → ${to} · anonymous rate limit`;
+  if (
+    (from === "API key" || from === "OAuth") &&
+    to === "anonymous" &&
+    reason === "credits-exhausted"
+  )
+    return `Fallback: ${from} → anonymous · account credits exhausted`;
   return undefined;
 }
 

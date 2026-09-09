@@ -306,6 +306,8 @@ describe("pi-exa-web extension contract", () => {
       for (const fallback of [
         { from: "anonymous", to: "api-key", reason: "anonymous-rate-limit" },
         { from: "api-key", to: "anonymous", reason: "credits-exhausted" },
+        { from: "anonymous", to: "oauth", reason: "anonymous-rate-limit" },
+        { from: "oauth", to: "anonymous", reason: "credits-exhausted" },
       ] as const) {
         const client: ExaWebClient = {
           search: async () => ({ text: "unchanged result", auth: fallback.to, fallback }),
@@ -328,11 +330,15 @@ describe("pi-exa-web extension contract", () => {
           content: [{ type: "text", text: "unchanged result" }],
           details: { auth: fallback.to, fallback },
         };
-        expect(renderResult(tool, result, { expanded: false })).not.toContain("Fallback:");
+        const authenticatedLabel =
+          fallback.from === "oauth" || fallback.to === "oauth" ? "OAuth" : "API key";
+        const collapsed = renderResult(tool, result, { expanded: false });
+        expect(collapsed).not.toContain("Fallback:");
+        expect(collapsed).toContain(fallback.to === "anonymous" ? "anonymous" : authenticatedLabel);
         expect(renderResult(tool, result, { expanded: true })).toContain(
           fallback.reason === "anonymous-rate-limit"
-            ? "Fallback: anonymous → API key · anonymous rate limit"
-            : "Fallback: API key → anonymous · account credits exhausted",
+            ? `Fallback: anonymous → ${authenticatedLabel} · anonymous rate limit`
+            : `Fallback: ${authenticatedLabel} → anonymous · account credits exhausted`,
         );
         expect(
           renderResult(

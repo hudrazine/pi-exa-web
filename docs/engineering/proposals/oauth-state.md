@@ -1,8 +1,8 @@
 # OAuth Lifecycle and State Design
 
-**Status:** Accepted for `0.2.0`; PR2 persistence merged with four-job CI verified; OAuth lifecycle pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
+**Status:** Accepted for `0.2.0`; PR2 persistence merged with four-job CI verified; PR4 refresh/runtime integration implemented locally; interactive login pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
 
-This document defines OAuth lifecycle, storage, and cross-process transaction behavior accepted on 2026-09-09. The accepted [routing design](oauth-routing.md) owns route selection, command behavior, error classification, and connection lifecycle. The [implementation plan](../plans/oauth-routing.md) owns delivery; the [verification specification](../plans/oauth-verification.md) owns acceptance checks. The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is implemented by PR2's private foundation; OAuth integration remains pending; PR2's four-job CI passed.
+This document defines OAuth lifecycle, storage, and cross-process transaction behavior accepted on 2026-09-09. The accepted [routing design](oauth-routing.md) owns route selection, command behavior, error classification, and connection lifecycle. The [implementation plan](../plans/oauth-routing.md) owns delivery; the [verification specification](../plans/oauth-verification.md) owns acceptance checks. The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is implemented by PR2's private foundation; PR4 integrates non-interactive refresh, private logout and revision-aware connections; its OS CI remains pending. PR2's four-job CI passed.
 
 ## OAuth Lifecycle
 

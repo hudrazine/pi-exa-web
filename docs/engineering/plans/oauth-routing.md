@@ -1,12 +1,12 @@
 # v0.2.0 OAuth and Routing Implementation Plan
 
-**Status:** PR1/PR2 merged; PR3 anonymous/API-key routing implemented locally, CI verified; OAuth stages pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
+**Status:** PR1–PR3 merged; PR4 saved OAuth runtime implemented locally, OS CI pending; interactive OAuth pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
 
 This plan defines delivery order and completion for the OAuth feature accepted on 2026-09-09. The accepted [routing design](../proposals/oauth-routing.md) and [state design](../proposals/oauth-state.md) define its behavior; the [verification specification](oauth-verification.md) owns acceptance checks. Acceptance includes both strategies and the OAuth lifecycle, alongside the previously accepted [SQLite coordination decision](../decisions/sqlite-state-locking.md) and its lock contract. Full feature implementation and verification remain pending.
 
 ## Scope and Dependencies
 
-The [current architecture](../architecture.md) includes unreleased PR1/PR2 foundations and local PR3 saved strategies, anonymous probes/cooldown and credit fallback. OAuth integration remains pending, with no credential migration planned. Existing tool, renderer, rate-limit, concurrency, and lifecycle tests provide the regression baseline.
+The [current architecture](../architecture.md) includes unreleased PR1–PR3 foundations, saved strategies, anonymous probes/cooldown and credit fallback. PR4 integrates saved OAuth, refresh and private logout; interactive management remains pending, with no credential migration planned. Existing tool, renderer, rate-limit, concurrency, and lifecycle tests provide the regression baseline.
 
 The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is accepted, including the target Node.js minimum; [package.json](../../../package.json) defines the implemented runtime requirement.
 
@@ -25,25 +25,27 @@ The following stages implement the accepted design. Each stage uses the [verific
 - [x] Introduce lazy route-specific connections and move routing from HTTP-body replay to the intent-level executor. Keep raw HTTP observation in transport middleware.
 - [x] Add package-owned safe errors, shared-connection cancellation, and shutdown handling.
 - [x] Exact-pin the reviewed MCP client `2.0.0` and extend local HTTP fixtures for real-SDK MCP checks without adding dependencies.
-- [ ] Add local fake authorization services with the OAuth tickets. Any matching server fixture dependency must be exact-pinned and development-only.
+- [x] Add local fake authorization services with the OAuth tickets. Any matching server fixture dependency must be exact-pinned and development-only.
 
 ### 2. Anonymous and API-key Routing
 
-- [x] Implement both strategies for anonymous/API-key access, classifiers, one-second no-header probe and fixed cooldown, header-derived deadlines and retry budgets. T9 adds OAuth resolution.
+- [x] Implement both strategies for anonymous/API-key access, classifiers, one-second no-header probe and fixed cooldown, header-derived deadlines and retry budgets. PR4 adds OAuth resolution.
 - [x] Retain initialization-time API-key reading and attach credentials only to their route connection.
-- [x] Verify anonymous/API-key routing, probe/cooldown and connection regression contracts locally. PR3 four-job CI passed for `189ab6a`.
+- [x] Verify anonymous/API-key routing, probe/cooldown and connection regression contracts locally. PR3 four-job CI passed for `a0b32de`; PR #17 merged as `346f0f8`.
 
 ### 3. Persistent State and OAuth
 
 - [x] Raise `engines.node` to `>=24.15.0` and implement OAuth exclusion using separate SQLite connections without a local mutex, and revisioned OAuth JSON transactions. Implement settings as validated last-write-wins JSON replacement without a revision or lock. PR2 merged after all four CI jobs passed.
 - [x] Implement per-call settings snapshots and `/exa strategy` display/replacement.
-- [ ] Implement OAuth revision observation, staged login, non-interactive refresh including 401 recovery, and local logout.
+- [x] Implement OAuth revision observation, non-interactive refresh including 401 recovery, and private local logout in PR4; OS CI remains pending.
+- [ ] Implement staged login in PR5.
 
 ### 4. Pi Integration
 
 - [ ] Register `/exa` management commands with the local-TUI login boundary, cancellable callback UI, and browser-opening fallback.
-- [x] Extend anonymous/API-key route/fallback details and rendering; preserve tool schemas and successful text. T9 adds OAuth display.
-- [ ] Connect Pi shutdown/reload to login, active operations, connections, and lock-wait cleanup.
+- [x] Extend anonymous/API-key route/fallback details and rendering; preserve tool schemas and successful text. PR4 adds OAuth display.
+- [x] Connect Pi shutdown/reload to active operations, refresh/logout, all route connections and lock-wait cleanup.
+- [ ] Add login/callback shutdown cleanup in PR5.
 
 ### 5. Release Preparation
 

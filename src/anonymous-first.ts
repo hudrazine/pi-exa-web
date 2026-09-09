@@ -1,23 +1,38 @@
 import { AnonymousRateLimitError, ExaError } from "./errors.ts";
 import type { Strategy } from "./state-schema.ts";
+import { OAuthUnavailableError } from "./oauth-state.ts";
 
-export type AuthRoute = "anonymous" | "api-key";
+export type AuthRoute = "anonymous" | "oauth" | "api-key";
+export type AuthenticatedRoute = Exclude<AuthRoute, "anonymous">;
+export interface RouteResult<T> {
+  result: T;
+  auth: AuthRoute;
+}
+export class CreditsExhaustedError extends ExaError {
+  readonly auth: AuthenticatedRoute;
+  constructor(auth: AuthenticatedRoute) {
+    super("credits-exhausted");
+    this.auth = auth;
+  }
+}
 export interface Fallback {
   from: AuthRoute;
   to: AuthRoute;
   reason: "anonymous-rate-limit" | "credits-exhausted";
 }
 
-export function createAnonymousFirstPolicy(hasApiKey: boolean) {
+export function createAnonymousFirstPolicy(
+  resolveAuthenticated: (signal: AbortSignal) => Promise<AuthenticatedRoute | undefined>,
+) {
   let blockedUntil = 0;
   return {
     async run<T>(
-      operation: (route: AuthRoute) => Promise<T>,
+      operation: (route: AuthRoute) => Promise<RouteResult<T>>,
       signal: AbortSignal,
       strategy: Strategy = "anonymous-first",
-    ) {
+    ): Promise<RouteResult<T> & { fallback?: Fallback }> {
       signal.throwIfAborted();
-      async function anonymous(): Promise<T> {
+      async function anonymous(): Promise<RouteResult<T>> {
         let probed = false;
         for (;;) {
           signal.throwIfAborted();
@@ -37,27 +52,33 @@ export function createAnonymousFirstPolicy(hasApiKey: boolean) {
           }
         }
       }
-      async function execute(route: AuthRoute): Promise<T> {
+      async function execute(route: AuthRoute): Promise<RouteResult<T>> {
         signal.throwIfAborted();
         return route === "anonymous" ? anonymous() : operation(route);
       }
       const primary: AuthRoute =
-        hasApiKey && (strategy === "authenticated-first" || blockedUntil > Date.now())
-          ? "api-key"
+        strategy === "authenticated-first" || blockedUntil > Date.now()
+          ? ((await resolveAuthenticated(signal)) ?? "anonymous")
           : "anonymous";
       try {
-        return { result: await execute(primary), auth: primary };
+        return await execute(primary);
       } catch (error) {
         signal.throwIfAborted();
+        // An unavailable credential before any tool send changes primary selection.
+        if (primary !== "anonymous" && error instanceof OAuthUnavailableError) return anonymous();
         if (!(error instanceof ExaError)) throw error;
         let fallback: Fallback;
-        if (primary === "anonymous" && error instanceof AnonymousRateLimitError && hasApiKey) {
+        if (primary === "anonymous" && error instanceof AnonymousRateLimitError) {
+          const authenticated = await resolveAuthenticated(signal);
+          if (authenticated === undefined) throw error;
+          signal.throwIfAborted();
           blockedUntil = Math.max(blockedUntil, error.retryAt ?? error.observedAt + 1_000);
-          fallback = { from: primary, to: "api-key", reason: "anonymous-rate-limit" };
-        } else if (primary === "api-key" && error.code === "credits-exhausted") {
-          fallback = { from: primary, to: "anonymous", reason: "credits-exhausted" };
+          fallback = { from: primary, to: authenticated, reason: "anonymous-rate-limit" };
+        } else if (error instanceof CreditsExhaustedError) {
+          fallback = { from: error.auth, to: "anonymous", reason: "credits-exhausted" };
         } else throw error;
-        return { result: await execute(fallback.to), auth: fallback.to, fallback };
+        const outcome = await execute(fallback.to);
+        return { ...outcome, fallback: { ...fallback, to: outcome.auth } };
       }
     },
     clear() {
