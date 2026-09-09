@@ -33,8 +33,8 @@ Split OAuth into ordinary-call authentication (PR4) and interactive login and ma
 
 | Ticket | PR unit | Scope | Progress | PR / evidence |
 | --- | --- | --- | --- | --- |
-| T1 | PR1 | Safe errors and SDK pinning | In review | Local changes; PR not created |
-| T2 | PR1 | Route-specific MCP connections | In review | Local changes; PR not created |
+| T1 | PR1 | Safe errors and SDK pinning | In review | [Draft PR #15](https://github.com/hudrazine/pi-exa-web/pull/15) |
+| T2 | PR1 | Route-specific MCP connections | In review | [Draft PR #15](https://github.com/hudrazine/pi-exa-web/pull/15) |
 | T3 | PR3 | Anonymous probes and cooldown | Todo | — |
 | T4 | PR2 | SQLite locking | Todo | — |
 | T5 | PR2 | OAuth revisions and settings replacement | Todo | — |
