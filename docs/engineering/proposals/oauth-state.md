@@ -1,8 +1,8 @@
 # OAuth Lifecycle and State Design
 
-**Status:** Accepted for `0.2.0`; not implemented or verified **Target:** `@hudrazine/pi-exa-web@0.2.0`
+**Status:** Accepted for `0.2.0`; PR2 persistence implemented locally, OAuth lifecycle and OS verification pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
 
-This document defines OAuth lifecycle, storage, and cross-process transaction behavior accepted on 2026-09-09. The accepted [routing design](oauth-routing.md) owns route selection, command behavior, error classification, and connection lifecycle. The [implementation plan](../plans/oauth-routing.md) owns delivery; the [verification specification](../plans/oauth-verification.md) owns acceptance checks. The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is also accepted for this target; implementation and verification remain pending.
+This document defines OAuth lifecycle, storage, and cross-process transaction behavior accepted on 2026-09-09. The accepted [routing design](oauth-routing.md) owns route selection, command behavior, error classification, and connection lifecycle. The [implementation plan](../plans/oauth-routing.md) owns delivery; the [verification specification](../plans/oauth-verification.md) owns acceptance checks. The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is implemented by PR2's private foundation; OAuth integration and OS CI remain pending.
 
 ## OAuth Lifecycle
 
@@ -27,6 +27,8 @@ All refresh paths, including SDK-triggered 401 recovery, must participate in the
 Logout atomically commits an empty OAuth record with a higher revision, then invalidates local OAuth state. It is local logout, not a promise of server-side token revocation. Other processes observe the new revision before subsequent authenticated operations; already-sent requests may finish. Strategy and API key are unchanged, so authenticated-first may select the API key after logout.
 
 ## Persistence and Multiple Pi Processes
+
+PR2 implements the private persistence described here; OAuth lifecycle operations and routing integration remain pending. `src/state-schema.ts` defines credentials with `resource`, SDK `tokens`, SDK `clientInformation`, SDK `discovery`, optional absolute epoch-millisecond `expiresAt`, and boolean `loginRequired`. SDK-stamped issuer fields are retained separately from wire-schema validation and must match discovery. Validation rejects invalid fields, coercions and stripped properties. `tests/fixtures/oauth-state.ts` pins SDK 2.0.0 serialization; these fixtures do not establish Hosted compatibility.
 
 Use `getAgentDir()` from Pi and a private `exa-web` child directory, independent of the project working directory. Do not use the repository, Pi session log, model-provider auth file, or a caller-configurable state path. Respect Pi's agent-directory override through that helper. Different agent directories are isolated. Do not use the separate ExaFuse project's state directory or automatically import its credentials.
 

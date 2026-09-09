@@ -1,6 +1,6 @@
 # SQLite Coordination for Local State
 
-**Status:** Accepted for `0.2.0`, amended on 2026-09-09; implementation pending
+**Status:** Accepted for `0.2.0`, amended on 2026-09-09; PR2 foundation implemented locally, OS CI and OAuth integration pending
 
 ## Original Decision — Partially Superseded
 
@@ -25,6 +25,8 @@ The OAuth state transactions require exclusion throughout read/refresh/write, no
 [SQLite transactions](https://www.sqlite.org/lang_transaction.html) allow one writer per database. `BEGIN IMMEDIATE` acquires a write transaction without an application table, and returning from the synchronous call does not end the transaction. The [pager](https://www.sqlite.org/lockingv3.html) uses OS locks. Holding this transaction across asynchronous refresh and external JSON replacement is a source-backed composition inference, not an executed package result. SQLite rollback does not undo JSON replacement or remote token rotation.
 
 ## Consequences and Validation
+
+Implementation update: PR2 provides private SQLite exclusion and JSON replacement. Local fixtures cover holding ownership across awaits and JSON commit, contention, process-death recovery and cleanup. This verifies that part of the composition inference above; remote refresh/token rotation and OS CI remain separate obligations in the [verification specification](../plans/oauth-verification.md).
 
 [Node 24.15](https://nodejs.org/download/release/v24.15.0/docs/api/sqlite.html) supplies synchronous database operations. Accept brief synchronous local I/O for coordination, with asynchronous contention waits and JSON I/O. Slow filesystem calls can block Pi's event loop and exceed the acquisition budget; the budget is not a hard response-time guarantee. Add no Worker without a concrete responsiveness problem.
 

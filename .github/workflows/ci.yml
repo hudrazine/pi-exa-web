@@ -11,8 +11,32 @@ concurrency:
 
 jobs:
   check-and-test:
-    name: Check and test
-    runs-on: ubuntu-latest
+    name: Check and test (${{ matrix.platform }}, ${{ matrix.minimum && 'minimum' || 'development' }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+            minimum: false
+          - os: macos-15
+            platform: darwin
+            arch: arm64
+            minimum: false
+          - os: windows-latest
+            platform: win32
+            arch: x64
+            minimum: false
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+            minimum: true
+    runs-on: ${{ matrix.os }}
+    env:
+      PI_EXA_CI_PLATFORM: ${{ matrix.platform }}
+      PI_EXA_CI_ARCH: ${{ matrix.arch }}
+      PI_EXA_CI_MINIMUM: ${{ matrix.minimum }}
     timeout-minutes: 10
     permissions:
       contents: read
@@ -31,8 +55,17 @@ jobs:
             - args: ["--frozen-lockfile"]
           cache: true
 
+      - name: Select minimum Node runtime
+        if: matrix.minimum
+        run: vp env use 24.15.0
+
+      - name: Show effective runtime
+        run: vp env current --json
+
       - name: Check package
-        run: vp run check
+        # npm scripts resolve pnpm's devEngines-pinned node shim. Built-ins
+        # honor the session runtime selected above for the minimum-version job.
+        run: ${{ matrix.minimum && 'vp check' || 'vp run check' }}
 
       - name: Test package
-        run: vp run test
+        run: ${{ matrix.minimum && 'vp test' || 'vp run test' }}

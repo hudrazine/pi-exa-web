@@ -7,6 +7,8 @@ const messages = {
   transport: "Could not complete the Exa MCP request.",
   server: "Exa is temporarily unavailable.",
   tool: "Exa returned an unsuccessful or unexpected tool response.",
+  storage: "Could not read or save Exa settings or credentials.",
+  "storage-conflict": "Exa credentials changed. Start login again.",
   lifecycle: "pi-exa-web MCP client is closed",
 } as const;
 

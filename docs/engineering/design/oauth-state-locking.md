@@ -1,8 +1,8 @@
 # SQLite State Lock Implementation Contract
 
-**Status:** Accepted for `0.2.0`; not implemented
+**Status:** Implemented locally in PR2 for `0.2.0`; OS CI verification and merge pending
 
-This document defines the implementation contract for the [accepted SQLite coordination decision](../decisions/sqlite-state-locking.md). The [OAuth state proposal](../proposals/oauth-state.md#transactions-and-revisions) owns revisioned JSON transactions, and the [verification specification](../plans/oauth-verification.md#lock-and-state-cases) owns acceptance checks. These locks do not exist in the implemented `0.1.0` package.
+This document defines the implementation contract for the [accepted SQLite coordination decision](../decisions/sqlite-state-locking.md). The [OAuth state proposal](../proposals/oauth-state.md#transactions-and-revisions) owns revisioned JSON transactions, and the [verification specification](../plans/oauth-verification.md#lock-and-state-cases) owns acceptance checks. The checkout implements the private foundation in `src/oauth-lock.ts`; it is unreleased and not yet used by web calls or commands.
 
 ## Acquisition and Cleanup
 

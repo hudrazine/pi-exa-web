@@ -16,12 +16,12 @@ The [tool contract](design/web-tools.md) owns caller-visible behavior and the sa
 
 ## Implemented Scope
 
-The repository retains the `0.1.0` feature scope: Exa only, one URL per fetch, anonymous-first access, and an optional `EXA_API_KEY`. Unreleased PR1 adds safe package errors and separate route connections, including session-only recovery and HTTP cancellation. It has no management commands, settings file, OAuth, persistent quota state, or cross-process coordination. Installation and end-user usage belong in the [README](../../README.md).
+The web tools retain the `0.1.0` feature scope: Exa only, one URL per fetch, anonymous-first access, and an optional `EXA_API_KEY`. Merged, unreleased PR1 adds safe errors and separate route connections, including session recovery and HTTP cancellation. Local PR2 adds private settings/OAuth JSON storage and SQLite coordination, which the tools do not yet use. There are no management commands or persistent quota state. Installation and end-user usage belong in the [README](../../README.md).
 
 Advanced Exa search, Agent features, direct Exa API integration, alternate providers, custom endpoints/proxies, caching, telemetry, client-side rate scheduling, and configurable retry policies are outside this scope.
 
 ## Development Direction
 
-OAuth login and selectable access strategies are accepted for `0.2.0`, together with the OAuth state lifecycle, SQLite coordination mechanism, and higher Node.js minimum. PR1's connection and safe-error foundation is implemented locally; OAuth, strategies, and persistent state remain unimplemented. The [OAuth plan](plans/oauth-routing.md) defines delivery and links to the accepted contracts.
+OAuth login and selectable access strategies are accepted for `0.2.0`, together with the OAuth state lifecycle, SQLite coordination and higher Node.js minimum. PR1 supplies the connection foundation; PR2 supplies private storage and the new runtime floor. OAuth operations and selectable routing remain unimplemented. The [OAuth plan](plans/oauth-routing.md) defines delivery and links to the contracts.
 
 Changesets release automation is implemented. Its first complete managed publication remains an independent [verification task](plans/changesets-release-automation.md).

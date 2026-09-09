@@ -1,6 +1,6 @@
 # OAuth and Routing Verification
 
-**Status:** Required checks for accepted `0.2.0` design; PR1 connection/safe-error subset verified locally, remaining checks pending
+**Status:** PR1 connection/safe-error subset and PR2 private storage verified locally; OS CI and OAuth integration pending
 
 This document owns local acceptance cases, runtime coverage, and the Hosted release smoke for the [implementation plan](oauth-routing.md). The accepted [routing design](../proposals/oauth-routing.md), [state design](../proposals/oauth-state.md), and [SQLite lock contract](../design/oauth-state-locking.md) supply the expectations. Design acceptance does not establish implementation or successful verification.
 
@@ -28,9 +28,13 @@ Normal tests use local fake services, fake time for delays, synchronization barr
 | Secret handling | Inject sentinel secrets in headers, nested errors, causes, formatter suffixes, authorization URLs, and storage failures; none appears in Pi errors/details, status, logs, or persisted conversation records. Successful Exa text contract is tested separately. |
 | Pi modes and package | TUI login and cancellation; other modes refuse interactive login before side effects but use saved credentials; loader registration includes management/shutdown; source-only npm artifact. |
 
-PR1 coverage lives in `tests/exa-mcp-client.test.ts` (real SDK/local HTTP, per-route connections, safe failures, cancellation, session recovery, shutdown, Pi loader/rendering and persisted error records), `tests/anonymous-first.test.ts` (existing probe/block behavior and header parsing), and `tests/index.test.ts` (public Pi contract). OAuth, new cooldown/probe behavior, authenticated tool-text classifiers, and all lock/state cases below remain pending.
+PR1 coverage lives in `tests/exa-mcp-client.test.ts` (real SDK/local HTTP, per-route connections, safe failures, cancellation, session recovery, shutdown, Pi loader/rendering and persisted error records), `tests/anonymous-first.test.ts` (existing probe/block behavior and header parsing), and `tests/index.test.ts` (public Pi contract). PR2 lock/state coverage is mapped below. OAuth operations, new cooldown/probe behavior and authenticated tool-text classifiers remain pending.
 
 ## Lock and State Cases
+
+PR2 coverage: `tests/state-store.test.ts` exercises L1–L2 with real child processes and SQLite, the JSON portion of L5, and settings replacement. `tests/oauth-lock.test.ts` covers L3 with controlled clocks and dependency failures. `tests/state-loader.test.ts` verifies SQLite through a test extension loaded by Pi's actual loader, the unchanged production entry, safe storage errors through rendering/SessionManager, and CI runtime identity. L4 and remote rotation in L5 remain with T8/T9. The four OS/runtime CI jobs are configured but have not yet supplied results for this revision.
+
+PR2 local evidence (2026-09-09): Linux x64 passed all 156 tests on Node 24.19.0 and 24.15.0, with test-process runtime assertions. Formatting, lint and types passed on both runtimes. The minimum run used `vp env use 24.15.0` followed by built-in `vp check` / `vp test`; development used `vp run check` / `vp run test`. `vp pm pack -- --dry-run --json` listed only LICENSE, package metadata, README and required `src/*.ts`. Real Pi loader and persisted storage-error checks are included in the suite. macOS/Windows and GitHub CI execution remain unverified; this evidence does not complete T11 or mark PR2 merged.
 
 Verify the accepted SQLite lock contract. Reuse feature fixtures for L4–L5; each obligation needs one test location.
 
@@ -45,7 +49,7 @@ Verify the accepted SQLite lock contract. Reuse feature fixtures for L4–L5; ea
 
 ## Runtime and Package Checks
 
-- Run L1–L3 on Linux x64, macOS arm64, and Windows x64 at the declared Node 24 development runtime, plus Linux at the minimum Node 24.15.0. Include JSON replacement and settings last-write-wins regressions in the OS jobs. The current CI is Linux-only. Use Vite+ and verify the actual executable version; expand the matrix only for a concrete mismatch.
+- Run L1–L3 on Linux x64, macOS arm64, and Windows x64 at the declared Node 24 development runtime, plus Linux at the minimum Node 24.15.0. Include JSON replacement and settings last-write-wins regressions in the OS jobs. PR2 defines this matrix; successful execution on every job is still required. Use Vite+ and verify the actual executable version; expand the matrix only for a concrete mismatch.
 - Run `vp run check` and `vp run test`. The real SDK/local server tests must exercise HTTP observation, provider callbacks, signal propagation, and retry composition.
 - Inspect `vp pm pack -- --dry-run --json` and load the TypeScript entry through Pi's real extension loader. Verify source-only publication without fixtures, state, secrets, or server runtime dependencies.
 
