@@ -1,17 +1,17 @@
 # Architecture
 
-`pi-exa-web` is a source-loaded Pi extension with separate lazy MCP connections for anonymous and API-key access. Pi-facing registration and rendering are separated from MCP lifecycle and authentication policy. This document describes merged PR1 and local PR2 changes over `0.1.0`. Private persistence is implemented; OAuth operations and selectable routing remain [accepted, unimplemented work](proposals/oauth-routing.md).
+`pi-exa-web` is a source-loaded Pi extension with separate lazy MCP connections for anonymous and API-key access. Pi-facing registration and rendering are separated from MCP lifecycle and authentication policy. This document describes merged PR1/PR2 and local PR3 changes over `0.1.0`. Saved anonymous/API-key routing is implemented; OAuth operations remain [accepted, unimplemented work](proposals/oauth-routing.md).
 
 ## Responsibilities and Call Flow
 
 | Boundary | Responsibility | Source |
 | --- | --- | --- |
-| Extension entry | Read `EXA_API_KEY` at initialization, construct the client, register tools, and register shutdown cleanup | [`src/index.ts`](../../src/index.ts) |
+| Extension entry | Read `EXA_API_KEY` at initialization, construct the client, register tools and `/exa strategy`, and register shutdown cleanup | [`src/index.ts`](../../src/index.ts) |
 | Pi adapter and renderer | Define schemas, invoke intent-level search/fetch operations, supply stable details, and render Pi results | [`src/register-tools.ts`](../../src/register-tools.ts) |
-| Exa MCP client | Manage lazy route connections, map tool arguments, observe HTTP failures, forward cancellation, and close resources | [`src/exa-mcp-client.ts`](../../src/exa-mcp-client.ts) |
-| Anonymous-first policy | Select routes around SDK calls, manage the process-local block deadline, and perform bounded anonymous retry/API-key fallback | [`src/anonymous-first.ts`](../../src/anonymous-first.ts) |
+| Exa MCP client | Manage lazy route connections, map tool arguments, snapshot settings, classify HTTP/MCP failures, forward cancellation, and close resources | [`src/exa-mcp-client.ts`](../../src/exa-mcp-client.ts) |
+| Anonymous-first policy | Select routes around SDK calls, apply the strategy snapshot and process-local cooldown, with bounded probes and one bidirectional fallback | [`src/anonymous-first.ts`](../../src/anonymous-first.ts) |
 
-The Pi adapter calls private `search` or `fetch` operations. The MCP client maps those intents to `web_search_exa` and `web_fetch_exa` on `https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa`. The [authentication policy](design/anonymous-first.md) selects routes outside `Client.callTool`; middleware applies route credentials and observes HTTP evidence without replaying bodies. The result returns as text and the actual authentication route; the adapter supplies the [public result metadata](design/web-tools.md).
+The Pi adapter calls private `search` or `fetch` operations. The MCP client maps those intents to `web_search_exa` and `web_fetch_exa` on `https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa`. The [authentication policy](design/anonymous-first.md) selects routes outside `Client.callTool`; middleware applies route credentials and observes HTTP evidence without replaying bodies. Each route classifies MCP tool errors before returning successful text, allowing only exact authenticated 402/429 prefixes to influence routing. The result returns as text, the actual authentication route and optional fallback metadata; the adapter supplies the [public result metadata](design/web-tools.md).
 
 The adapter does not inspect JSON-RPC or choose credentials. The renderer reads tool arguments, error text, and stable details; it does not parse Exa search results or read authentication state. MCP tool names and session mechanics remain private to the client.
 
@@ -27,7 +27,7 @@ An HTTP 404 permits one fresh connection per route attempt only when the rejecte
 
 ## Private State Foundation
 
-`src/state-store.ts` uses Pi's `getAgentDir()` and canonicalizes the state directory. It has no cache or public path override. `src/state-schema.ts` validates records against version 1 and pinned SDK schemas. Settings use complete JSON replacement without SQLite. OAuth updates use `src/oauth-lock.ts`, with a connection per transaction, to reload the latest state and compare an optional expected revision before invoking the update callback. Returning `undefined` leaves JSON unchanged; credentials or `null` commit the next revision. SQLite rollback cannot undo JSON rename. The store is not yet wired into calls or commands; later PRs supply their signals and OAuth operations. See the [state contract](proposals/oauth-state.md#transactions-and-revisions).
+`src/state-store.ts` uses Pi's `getAgentDir()` and canonicalizes the state directory. It has no cache or public path override. `src/state-schema.ts` validates records against version 1 and pinned SDK schemas. Settings use complete JSON replacement without SQLite. OAuth updates use `src/oauth-lock.ts`, with a connection per transaction, to reload the latest state and compare an optional expected revision before invoking the update callback. Returning `undefined` leaves JSON unchanged; credentials or `null` commit the next revision. SQLite rollback cannot undo JSON rename. Each logical call reads settings once before network access. Private client strategy operations back `/exa strategy`, use the lifecycle signal for writes and reject new work after close. Settings have no cache; successful rename is the commit point. OAuth operations remain for later PRs. See the [state contract](proposals/oauth-state.md#transactions-and-revisions).
 
 ## Packaging and Dependencies
 

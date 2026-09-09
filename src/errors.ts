@@ -2,6 +2,7 @@ const messages = {
   "anonymous-rate-limit":
     "Exa anonymous MCP rate limit reached. Set EXA_API_KEY from https://dashboard.exa.ai/api-keys or retry later.",
   "authenticated-rate-limit": "Exa authenticated rate limit reached. Retry later.",
+  "credits-exhausted": "Exa account credits are exhausted.",
   authentication: "Exa authentication failed.",
   permission: "Exa denied this request.",
   transport: "Could not complete the Exa MCP request.",
@@ -24,6 +25,15 @@ export class ExaError extends Error {
     this.name = "ExaError";
     this.code = code;
     if (retryAt !== undefined && Number.isFinite(retryAt)) this.retryAt = retryAt;
+  }
+}
+
+// HTTP observation time is private evidence, stripped at the client boundary.
+export class AnonymousRateLimitError extends ExaError {
+  readonly observedAt: number;
+  constructor(observedAt: number, retryAt?: number) {
+    super("anonymous-rate-limit", retryAt);
+    this.observedAt = observedAt;
   }
 }
 

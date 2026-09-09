@@ -11,23 +11,24 @@ The current extension registers `web_search` and `web_fetch`. They expose Exa se
 
 Pi validates the TypeBox schemas before execution. Optional values are omitted from the MCP call when absent so Exa owns its defaults.
 
-The client collects MCP text blocks in order, joining them with blank lines. It does not parse search results or introduce a package-owned response schema. A successful MCP response without text is an error. MCP `isError: true` is thrown as a Pi tool error, not returned as successful content.
+The client collects MCP text blocks in order, joining them with blank lines. It does not parse search results or introduce a package-owned response schema. A successful MCP response without text is an error. MCP `isError: true` is classified inside the route attempt and never returned as successful content. A permitted fallback may still make the logical call succeed.
 
 Successful Pi results contain text plus stable `details`:
 
-| Field                          | Meaning                                           |
-| ------------------------------ | ------------------------------------------------- |
-| `provider`                     | Always `exa`                                      |
-| `operation`                    | `search` or `fetch`                               |
-| `auth`                         | Actual successful route: `anonymous` or `api-key` |
-| `query`, `requestedNumResults` | Search input and optional requested count         |
-| `url`, `maxCharacters`         | Fetch input and optional requested limit          |
+| Field | Meaning |
+| --- | --- |
+| `provider` | Always `exa` |
+| `operation` | `search` or `fetch` |
+| `auth` | Actual successful route: `anonymous` or `api-key` |
+| `fallback` | Optional `{from, to, reason}`: `anonymous-rate-limit` or `credits-exhausted`; absent for primary selection during cooldown |
+| `query`, `requestedNumResults` | Search input and optional requested count |
+| `url`, `maxCharacters` | Fetch input and optional requested limit |
 
 Only the fields for the invoked operation are present, and omitted limits remain absent. Requested counts must not be presented as actual returned counts. Details contain neither credentials nor HTTP headers nor raw protocol data.
 
 ## Pi Presentation
 
-The standard Pi tool shell owns pending, success, and error framing. Calls show the query or URL, requested limits, and progress while executing. Collapsed results show completion and the successful authentication route; expanded results show Exa text. Display normalization removes terminal sequences and normalizes line endings without changing successful model-facing text.
+The standard Pi tool shell owns pending, success, and error framing. Calls show the query or URL, requested limits, and progress while executing. Collapsed results show completion and the successful authentication route; expanded results show Exa text and, when present, a fixed fallback route/reason. Routing prose is never added to successful model-facing text. Display normalization removes terminal sequences and normalizes line endings without changing successful model-facing text.
 
 Errors show a concise collapsed summary and expanded error text. Cancellation is normalized to `Cancelled`. The renderer uses arguments and result details; it does not infer metadata from Exa text or consult the authentication policy.
 
@@ -35,8 +36,8 @@ Errors show a concise collapsed summary and expanded error text. Cancellation is
 
 MCP tool errors, SDK failures, and network failures are thrown so Pi marks the call as failed. Missing credentials after an anonymous limit produce a package-owned message naming `EXA_API_KEY`, linking to the Exa key dashboard, and suggesting retry later. Cancellation and connection cleanup follow the [lifecycle contract](../architecture.md#connection-and-cancellation).
 
-Unreleased PR1 replaces raw upstream errors with package-owned messages and private failure codes: `anonymous-rate-limit`, `authenticated-rate-limit`, `authentication`, `permission`, `server`, `transport`, `tool`, and `lifecycle`. Errors retain only the final failure and an optional header-derived `retryAt` in epoch milliseconds. HTTP observation supplies status evidence; SDK protocol/invalid-result errors, MCP `isError`, and non-text results become safe tool errors. Authenticated tool-text 402/429 classification remains T6 work.
+Unreleased changes replace raw upstream errors with package-owned messages and private failure codes: `anonymous-rate-limit`, `authenticated-rate-limit`, `credits-exhausted`, `authentication`, `permission`, `server`, `transport`, `tool`, `storage`, `storage-conflict`, and `lifecycle`. Errors retain only the final failure and an optional header-derived `retryAt` in epoch milliseconds. HTTP observation supplies status evidence; SDK protocol/invalid-result errors, MCP `isError`, and non-text results become safe tool errors. PR3 classifies only the invoked tool's exact first-text-block 402/429 prefix on authenticated `isError: true` results; see the [routing boundary](../proposals/oauth-routing.md#authenticated-tool-error-boundary). Raw HTTP 402 remains `transport` without fallback.
 
-Pi receives no raw response bodies, headers, exceptions, credential-bearing upstream URLs, or causes. Unknown exceptions are sanitized at the adapter boundary too. Abort reasons remain internal; Pi receives `Operation aborted` without a cause and renders `Cancelled`. Successful text preservation is tested separately from error secrecy. PR2 adds fixed `storage` and `storage-conflict` failures for the private state foundation, without file contents, paths or causes. They are not yet invoked by ordinary web calls. Remaining OAuth behavior belongs to the [accepted design](../proposals/oauth-routing.md#failure-classification-and-safe-output).
+Pi receives no raw response bodies, headers, exceptions, credential-bearing upstream URLs, or causes. Unknown exceptions are sanitized at the adapter boundary too. Abort reasons remain internal; Pi receives `Operation aborted` without a cause and renders `Cancelled`. Successful text preservation is tested separately from error secrecy. PR2 adds fixed `storage` and `storage-conflict` failures for the private state foundation, without file contents, paths or causes. Ordinary web calls now surface `storage` failures when their strategy snapshot cannot be read. OAuth conflicts remain private storage behavior until OAuth integration. Remaining OAuth behavior belongs to the [accepted design](../proposals/oauth-routing.md#failure-classification-and-safe-output).
 
 The schemas and rendering implementation are in [`src/register-tools.ts`](../../../src/register-tools.ts); text extraction is in [`src/exa-mcp-client.ts`](../../../src/exa-mcp-client.ts). See [quality criteria](../quality.md) for verification responsibilities.
