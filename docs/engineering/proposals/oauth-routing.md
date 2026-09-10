@@ -1,8 +1,8 @@
 # v0.2.0 OAuth and Routing Design
 
-**Status:** Accepted for `0.2.0`; PR1–PR4 merged; PR5 interactive management implemented locally, PR CI and Hosted smoke pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
+**Status:** Accepted for `0.2.0`; PR1–PR5 merged with CI verified; Hosted smoke and release verification pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
 
-This document defines the behavior and source-backed rationale accepted on 2026-09-09. The [implementation plan](../plans/oauth-routing.md) owns delivery; the [verification specification](../plans/oauth-verification.md) owns acceptance checks. The [current architecture](../architecture.md) describes the checkout, including unreleased PR1–PR5 changes over `0.1.0`. The accepted [OAuth state design](oauth-state.md) defines login, refresh, and persistence. PR2 implements the private [SQLite coordination foundation](../decisions/sqlite-state-locking.md); merged PR4 integrates saved OAuth; local PR5 adds interactive login and management.
+This document defines the behavior and source-backed rationale accepted on 2026-09-09. The [implementation plan](../plans/oauth-routing.md) owns delivery; the [verification specification](../plans/oauth-verification.md) owns acceptance checks. The [current architecture](../architecture.md) describes the checkout, including merged, unreleased PR1–PR5 changes over `0.1.0`. The accepted [OAuth state design](oauth-state.md) defines implemented login, refresh and persistence, using the private [SQLite coordination foundation](../decisions/sqlite-state-locking.md).
 
 ## Purpose and Scope
 
@@ -109,7 +109,7 @@ No authenticated-credit cooldown or balance discovery is added: authenticated-fi
 
 ## Failure Classification and Safe Output
 
-Classify evidence before constructing Pi errors or applying routing. Internal failures use `anonymous-rate-limit`, `authenticated-rate-limit`, `credits-exhausted`, `authentication`, `permission`, `transport`, `server`, or `tool`; local failures use `storage`, `storage-conflict`, or `lifecycle`. Keep only the final route failure as the top-level code and retry time. Earlier failed routes may be retained in private sanitized attempt metadata, not raw exceptions.
+Classify evidence before constructing Pi errors or applying routing. Internal failures use `anonymous-rate-limit`, `authenticated-rate-limit`, `credits-exhausted`, `authentication`, `permission`, `transport`, `server`, or `tool`; local failures use `storage`, `storage-conflict`, or `lifecycle`. Explicit login also uses fixed `login-in-progress`, `login-timeout`, `login-denied` and `login-cancelled` messages through command notifications. Keep only the final route failure as the top-level code and retry time. Earlier failed routes may be retained in private sanitized attempt metadata, not raw exceptions.
 
 | Evidence | Classification and consequence |
 | --- | --- |

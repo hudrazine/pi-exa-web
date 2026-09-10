@@ -11,10 +11,10 @@
 | Selectable anonymous/API-key routing | PR3 merged in [#17](https://github.com/hudrazine/pi-exa-web/pull/17); unreleased | [Delivery plan](plans/oauth-routing.md) |
 | SQLite OAuth coordination, JSON storage and higher Node.js minimum | PR2 merged in [#16](https://github.com/hudrazine/pi-exa-web/pull/16); all four CI jobs passed | [Decision and rationale](decisions/sqlite-state-locking.md), [lock contract](design/oauth-state-locking.md) |
 | Saved OAuth selection, refresh and private logout | PR4 merged in [#19](https://github.com/hudrazine/pi-exa-web/pull/19); all four CI jobs passed | [OAuth state design](proposals/oauth-state.md), [verification](plans/oauth-verification.md) |
-| Interactive login and management commands | PR5 implemented locally; PR CI and Hosted smoke pending | [Login and state](proposals/oauth-state.md#explicit-login), [verification](plans/oauth-verification.md#pr5-verification) |
+| Interactive login and management commands | PR5 merged in [#20](https://github.com/hudrazine/pi-exa-web/pull/20); all four CI jobs passed; Hosted smoke pending | [Login and state](proposals/oauth-state.md#explicit-login), [verification](plans/oauth-verification.md#pr5-verification) |
 | Changesets release automation | Implemented; first managed publication unverified | [Remaining release verification](plans/changesets-release-automation.md) |
 
-“Accepted” identifies a selected design and its constraints, not implemented or verified behavior. PR3 adds `/exa strategy`, bounded anonymous probes/cooldown, and 402 fallback. PR4 integrates saved OAuth selection and refresh. PR5 adds staged login and `/exa login/logout/status` through transient command UI. Hosted compatibility and release verification remain pending; see the [ticket tracker](plans/oauth-tickets.md).
+“Accepted” identifies a selected design and its constraints, not implemented or verified behavior. PR1–PR5 are merged and unreleased. PR6 prepares documentation and package evidence (T12); Hosted compatibility (T13) and publication verification (T14) remain separate pending conditions. See the [ticket tracker](plans/oauth-tickets.md).
 
 ## Understand and Maintain the Package
 
@@ -23,7 +23,7 @@
 | Who is this for, what must it achieve, and what is excluded? | [Product and scope](product.md) |
 | How do Pi integration, MCP connections, and authentication fit together? | [Architecture](architecture.md) |
 | What inputs, results, display, and errors do users observe? | [Pi tool contract](design/web-tools.md) |
-| When may calls retry or use an API key? | [Anonymous-first authentication](design/anonymous-first.md) |
+| When may calls retry or use OAuth or an API key? | [Anonymous-first authentication](design/anonymous-first.md) |
 | How should changes be checked? | [Quality and development](quality.md) |
 | How is a version reviewed, published, and verified? | [Release procedure](releases.md) |
 
