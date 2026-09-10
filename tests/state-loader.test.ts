@@ -15,9 +15,7 @@ test("CI executes the declared OS, architecture and Node runtime", () => {
   if (process.env.PI_EXA_CI_PLATFORM) {
     expect(process.platform).toBe(process.env.PI_EXA_CI_PLATFORM);
     expect(process.arch).toBe(process.env.PI_EXA_CI_ARCH);
-    expect(process.versions.node).toBe(
-      process.env.PI_EXA_CI_MINIMUM === "true" ? "24.15.0" : packageJson.devEngines.runtime.version,
-    );
+    expect(process.versions.node).toBe(packageJson.devEngines.runtime.version);
   } else {
     expect(Number(process.versions.node.split(".")[0])).toBeGreaterThanOrEqual(24);
   }

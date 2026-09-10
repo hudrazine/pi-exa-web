@@ -88,6 +88,6 @@ Do not treat a release as verified until the registry-installed package passes t
 - Do not approve `npm-production` when the verification job or package-file inspection is incomplete.
 - If release-PR creation is denied, verify that GitHub Actions may create pull requests; do not broaden workflow permissions.
 - If a local version simulation must generate GitHub-linked changelog entries, provide an appropriately scoped `GITHUB_TOKEN` locally and never commit it. The release workflow uses the GitHub-provided token and does not need a separate secret.
-- If Changesets fails with `spawn pnpm ENOENT`, confirm that the `select-mode`, `version`, and `publish` jobs expose the directory returned by `vp env which pnpm` immediately after `setup-vp`. Keep using Vite+'s managed pnpm rather than adding a second package-manager setup path.
+- If Changesets fails with `spawn pnpm ENOENT`, confirm that `setup-vp` completed successfully and that Vite+'s managed `pnpm` shim is on the subsequent step's `PATH`. Vite+ 0.3.1 provides this shim without a manual PATH adjustment. Check that `pnpm --version` matches `devEngines.packageManager.version` in `package.json`. Keep using Vite+'s managed pnpm rather than adding a second package-manager setup path.
 - A failed publish that did not create the npm version may be retried after correcting the workflow or external configuration.
 - Published npm versions are immutable. Correct a bad artifact with a new patch version rather than trying to reuse a version.
