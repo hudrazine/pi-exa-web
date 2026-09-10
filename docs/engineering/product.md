@@ -22,6 +22,6 @@ OAuth login requires local interactive Pi. Saved credentials and non-interactive
 
 Keep one package, one source-loaded extension and Exa as the backend. Advanced Exa search, Agent features, direct Exa API integration, alternate providers, custom endpoints/proxies, multiple accounts, keychains, remote callback relays or automatic SSH forwarding, network-filesystem persistence, result caching, telemetry, quota scheduling and configurable retry policies are outside the scope. Do not introduce a public SDK, stdio MCP server or build step.
 
-## Completion and Release
+## Quality and Delivery
 
-The `0.2.0` implementation includes routing, safe errors, OAuth management, persistence and command completion. Feature completion does not prove Hosted registration, consent or refresh-token issuance. The [release plan](plans/oauth-tickets.md) separates implementation evidence, Hosted compatibility and authorized publication.
+The package must load through Pi's real extension loader, preserve the tool and authentication contracts under concurrency and cancellation, and keep normal verification independent of Hosted availability. [Quality criteria](quality.md) define required evidence; the [release procedure](releases.md) separates local verification, Hosted compatibility and authorized publication. [Project status](README.md#project-status) identifies the completed release and planning state.

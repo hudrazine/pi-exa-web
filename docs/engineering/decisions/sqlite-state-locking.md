@@ -1,6 +1,6 @@
 # SQLite Coordination for OAuth State
 
-**Status:** Accepted for `0.2.0`, with the 2026-09-09 amendment below. Implementation and supported-platform evidence are recorded [separately](../records/0.2.0-verification.md).
+**Status:** Accepted. This record explains the adopted storage decision and its consequences. The design contracts own current behavior; [release evidence](../records/0.2.0-verification.md) records implementation verification. Superseded portions of the decision are isolated in [decision history](#decision-history).
 
 ## Decision
 
@@ -18,7 +18,7 @@ OAuth revisions and revisioned null-credential logout prevent stale login commit
 
 ## Consequences
 
-The decision raises the Node minimum to `>=24.15.0`, accepting that release's [Stability 1.2 — Release candidate SQLite API](https://nodejs.org/download/release/v24.15.0/docs/api/sqlite.html). No native-addon build/ABI dependency is added. SQLite loads only for OAuth transactions and fails safely when unavailable.
+The decision requires Node `>=24.15.0`, accepting that release's [Stability 1.2 — Release candidate SQLite API](https://nodejs.org/download/release/v24.15.0/docs/api/sqlite.html). No native-addon build/ABI dependency is added. SQLite loads only for OAuth transactions and fails safely when unavailable.
 
 Brief synchronous local I/O is accepted; contention waits and JSON I/O remain asynchronous. Slow filesystem calls can block Pi's event loop and exceed the acquisition budget. The deadline is not a hard response-time guarantee or a lease. Add no Worker without a concrete responsiveness problem.
 

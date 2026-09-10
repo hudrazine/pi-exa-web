@@ -1,93 +1,89 @@
-# npm Release Procedure
+# Release Procedure
 
-## Release Ownership
+Changesets owns package versioning and `CHANGELOG.md`. A push to `main` runs [publish.yml](../../.github/workflows/publish.yml), which creates a release PR, publishes an approved version, or exits without release work. Pi loads the TypeScript source directly; there is no build or generated distribution.
 
-Changesets owns package versions and `CHANGELOG.md` updates. Changelog entries include originating GitHub pull-request, commit, and author links. A push to `main` runs [`publish.yml`](../../.github/workflows/publish.yml), which creates or updates a release pull request, publishes an approved release, or exits without release work.
+This document defines the default procedure. Completed release evidence and any release-specific exceptions belong in [release records](README.md#historical-evidence), not in the operational steps.
 
-The workflow and release-PR generation are implemented. The first complete Changesets-managed publication remains pending in the [release plan](plans/oauth-tickets.md). [Initial release evidence](records/initial-release.md) records the completed `0.1.0` OIDC publication; check registry state during each release rather than relying on that historical result.
+## Release Intent and Preconditions
 
-## Preconditions
+Follow the [Changesets policy](../../.changeset/README.md) for user-visible changes. Use `vp run changeset` and commit the generated entry with the implementation PR. Do not manually edit the package version or changelog for routine releases.
 
-- Work from a clean branch based on current `main`.
-- Use the Node.js and pnpm versions declared in `package.json`.
-- Do not edit `package.json` or `CHANGELOG.md` manually for a routine release; Changesets updates them in the release pull request.
+Before releasing:
+
+- Work from a clean branch based on current `main`, using the runtime and package manager declared in [package.json](../../package.json).
+- Complete the [local, CI and package checks](quality.md#runtime-and-package-checks) on the intended revision.
+- Confirm GitHub Actions may create PRs; this repository setting is not managed by the workflow.
 - Obtain explicit authorization before approving `npm-production` or making another external release change.
-- Use a new isolated `PI_CODING_AGENT_DIR` with `EXA_API_KEY` unset for registry-package smoke tests, as described below. Do not intentionally consume the anonymous quota to force a 429.
-- Do not add a build or generated distribution artifact. Pi loads the published TypeScript source through jiti.
-- GitHub Actions must be allowed to create pull requests before release-PR automation can operate. This repository setting is not managed by the workflow.
-
-## Record a Release Intent
-
-Follow the repository policy in [`.changeset/README.md`](../../.changeset/README.md).
-
-1. For a user-visible package change, run:
-
-   ```sh
-   vp run changeset
-   ```
-
-2. Select the SemVer bump and write a concise user-facing summary.
-3. Commit the generated `.changeset/*.md` file with the implementation pull request.
-4. A changeset is not required for documentation, tests, CI configuration, or an internal refactor that does not change published behavior. Use `vp run changeset --empty` when an explicit no-release record is useful.
+- Use separate, empty Pi agent directories for Hosted OAuth and registry-installed anonymous smoke, with `EXA_API_KEY` unset. Do not consume quota deliberately to force a rejection.
 
 ## Hosted OAuth Smoke
 
-This pre-publication check requires operator account access and explicit login. Run once in an isolated local Pi agent directory selected by `PI_CODING_AGENT_DIR`, with `EXA_API_KEY` unset. Install and run the intended package in that same environment, using the actual `/exa` command and Pi tools. Login requires explicit operator action; scripted external checks also require `PI_EXA_WEB_LIVE_TEST=1`. Use a different empty agent directory for the registry-installed anonymous smoke below.
+This pre-publication check requires operator account access and explicit interactive login. Set `PI_CODING_AGENT_DIR` to an isolated local directory and install/run the intended package there. Use the actual `/exa` command and Pi tools. Scripted external checks also require `PI_EXA_WEB_LIVE_TEST=1`.
 
-1. Run `/exa login`; confirm callback completion and authenticated initialization. Record token/refresh-token presence, never values.
-2. Select `authenticated-first` and run one search. Verify successful text and `oauth` details.
-3. Restart Pi with the same directory. Exercise real refresh using the issued refresh token, then run one fetch. A documented test-only local expiry override may trigger refresh without waiting for natural expiry. If no refresh token is issued, review the refresh-support claim before release; do not mark refresh verified.
-4. Check local status/logout and clean up credentials. Verify local state transitions and API-key preservation in the implementation regression suite; they need no extra Hosted requests.
+1. Run `/exa login` and confirm callback completion and authenticated initialization. Record access-token and refresh-token presence, never values.
+2. Select `authenticated-first` and run one search. Confirm successful text and `details.auth: oauth`.
+3. Restart Pi with the same directory. Exercise real refresh using the issued refresh token, then run one fetch with the OAuth route. A documented test-only local expiry override may trigger refresh without waiting for natural expiry. If no refresh token is issued, review the refresh-support claim before release; do not mark refresh verified.
+4. Check local status/logout and clean up credentials. Local state transitions and API-key preservation are covered by regression tests and need no extra Hosted requests.
 
-Allow at most four OAuth tool sends including retries; normally two suffice. Stop on unexpected behavior. No deliberate Hosted 401/429, exhausted credits, or natural-expiry wait is required. Use the post-publication anonymous search/fetch smoke below once; do not duplicate it here.
+Allow at most four OAuth tool sends including retries; normally two suffice. Stop on unexpected behavior. Do not deliberately provoke Hosted 401/429, exhaust credits or wait for natural expiry. Anonymous smoke belongs to the registry check below and is not duplicated here.
 
-Record date, SDK version, login outcome, restart/refresh result, and effective routes. Do not record tokens, codes, authorization URLs, API keys, queries, fetched URLs, result text, or network dumps. Account access being unavailable leaves this release condition incomplete.
+Record date, SDK version, login outcome, restart/refresh result and effective routes. Never record tokens, codes, authorization URLs, API keys, queries, fetched URLs, result text or network dumps. Missing account access leaves the check incomplete.
 
-## Review and Publish a Release
+## Version and Publish
 
-1. After changesets reach `main`, the `select-mode` job chooses the release mode.
-2. When versioning is required, the `version` job uses `changesets/action/version` to create or update `chore(release): version package`. This job can write repository contents and pull requests but has no OIDC permission.
-3. Review the release pull request's package version, consumed changesets, and GitHub-linked `CHANGELOG.md` entries, then run or approve its required CI checks. For `0.2.0`, require the completed local/CI/package gate and the Hosted OAuth smoke below before merging the release PR. The [release plan](plans/oauth-tickets.md) records these gates; passing local tests alone does not establish release readiness.
-4. The resulting `main` push selects publish mode. The read-only `verify` job runs `vp run check`, `vp run test`, and `vp pm pack -- --dry-run --json` before any deployment approval.
-5. Inspect the completed verification output. After explicit authorization, approve the waiting `npm-production` deployment.
-6. Only the approved `publish` job has `id-token: write`. It runs `vp run release`, which uses Changesets and pnpm to publish through npm Trusted Publisher without a token. The package's `prepublishOnly` script repeats check and test during publication.
-7. `changesets/action/publish` pushes the single-package `v<version>` tag and creates the matching GitHub Release from the changelog entry.
-
-The release pull request uses the repository `GITHUB_TOKEN`. If GitHub presents an approval banner for workflows created by that token, a maintainer must approve those CI runs before merging the pull request.
+1. Changesets on `main` select version mode. The version job creates or updates `chore(release): version package`; it can write contents and PRs but has no OIDC permission.
+2. Review the generated version, consumed changesets, and changelog links to originating PRs, commits and authors. Require successful CI and the Hosted OAuth check before merging. The release PR uses `GITHUB_TOKEN`; if GitHub requests workflow approval, a maintainer approves those CI runs.
+3. Merging the release PR selects publish mode. The read-only verify job runs `vp run check`, `vp run test` and `vp pm pack -- --dry-run --json` before deployment approval.
+4. Inspect the verification results and file list. With explicit authorization, approve the waiting `npm-production` deployment.
+5. The publish job alone has `id-token: write`. It runs `vp run release` through Changesets and pnpm using npm Trusted Publisher. `prepublishOnly` repeats check and test. No npm token is used.
+6. The publish action pushes `v<version>` and creates the corresponding GitHub Release from the changelog.
 
 ## Trusted Publisher Configuration
 
-The external binding must remain exact and case-sensitive:
+The external binding is exact and case-sensitive:
 
-- organization or user: `hudrazine`
-- repository: `pi-exa-web`
-- workflow filename: `publish.yml`
-- environment: `npm-production`
-- allowed action: `npm publish`
+| Setting              | Value            |
+| -------------------- | ---------------- |
+| Organization or user | `hudrazine`      |
+| Repository           | `pi-exa-web`     |
+| Workflow             | `publish.yml`    |
+| Environment          | `npm-production` |
+| Allowed action       | `npm publish`    |
 
-`npm-production` requires one reviewer and accepts deployments only from `main`. A sole maintainer must remain able to self-review unless another eligible reviewer is added. Do not add an npm token to GitHub; authentication uses OIDC only.
+`npm-production` requires one reviewer and accepts deployments only from `main`. A sole maintainer must be able to self-review unless another eligible reviewer is added. Do not add an npm token to GitHub.
 
-## Verification
+## Registry Verification
 
-After a successful publication:
+After publication:
 
-1. Confirm that npm `latest` resolves to the release-PR version and that the artifact carries provenance.
-2. Compare the registry artifact with the reviewed dry-run file list and publication commit. It must contain the required TypeScript source, README, license, and package metadata, with no tests, fixtures, state, secrets, or generated distribution artifact.
-3. Confirm that the Git tag, GitHub Release, npm version, and `CHANGELOG.md` entry use the same version and release notes.
-4. In a dedicated shell, set `PI_CODING_AGENT_DIR` to a newly created empty directory and unset `EXA_API_KEY` before installing or starting Pi. For example, in Bash, use `export PI_CODING_AGENT_DIR="$(mktemp -d)"` and `unset EXA_API_KEY`. Keep that environment for all following steps. Do not copy the normal agent directory, saved `exa-web` state or package settings into it; configure only the model access needed for the smoke.
-5. In that same environment, install the exact registry version with `pi install npm:@hudrazine/pi-exa-web@<reviewed-version>`, replacing the version placeholder. Start Pi from a clean working directory without project extensions or package settings. Confirm that the registry package provides the tools, rather than a local checkout or a second installation.
-6. Make one bounded `web_search` call and one bounded `web_fetch` call. Both must succeed with `details.auth` equal to `anonymous` and no fallback. Do not log in, change strategy, reuse the Hosted OAuth smoke directory, or issue extra calls to provoke a rate limit. Stop on an unexpected route or failure and leave verification incomplete.
+1. Confirm npm `latest` resolves to the reviewed version and that the artifact carries provenance.
+2. Compare the registry artifact with the reviewed dry-run file list and publication commit. It must contain LICENSE, README, package.json and required TypeScript source only.
+3. Confirm the npm version, Git tag, GitHub Release and changelog agree on version and release notes.
+4. In a dedicated shell, create an empty agent directory and unset the API key before installing or starting Pi:
 
-Exit Pi before cleaning up the smoke directory, and clean up only that isolated directory. Do not delete or replace a live OAuth coordination DB or journal. The normal Pi agent directory remains outside this procedure.
+   ```sh
+   export PI_CODING_AGENT_DIR="$(mktemp -d)"
+   unset EXA_API_KEY
+   pi install npm:@hudrazine/pi-exa-web@<reviewed-version>
+   ```
 
-Do not treat a release as verified until the registry-installed package passes the smoke tests.
+   Replace the version placeholder. Retain this environment for the smoke. Do not copy normal agent settings, saved OAuth state or package settings; configure only model access needed for the check.
+
+5. Start Pi from a clean working directory without project extensions or package settings. Confirm the exact registry package supplies the tools, rather than a local checkout or second installation.
+6. Make one bounded `web_search` call and one bounded `web_fetch` call. Both must succeed with `details.auth: anonymous` and no fallback. Do not log in, change strategy, reuse the OAuth-smoke directory or issue extra calls to provoke a rate limit. Stop on unexpected routes or failures and leave verification incomplete.
+
+Exit Pi before removing only the isolated smoke directory. Never delete or replace a live OAuth coordination DB or journal. The normal agent directory is outside this procedure.
+
+Registry-installed compatibility is verified only by a successful registry smoke. A maintainer decision to waive a check must be recorded as a waiver, not a successful execution.
 
 ## Failure Handling
 
-- Do not fall back to an npm token when OIDC authentication fails. Check the exact repository, `publish.yml`, `npm-production`, `id-token: write`, and GitHub-hosted runner configuration, then rerun the failed workflow.
-- Do not approve `npm-production` when the verification job or package-file inspection is incomplete.
-- If release-PR creation is denied, verify that GitHub Actions may create pull requests; do not broaden workflow permissions.
-- If a local version simulation must generate GitHub-linked changelog entries, provide an appropriately scoped `GITHUB_TOKEN` locally and never commit it. The release workflow uses the GitHub-provided token and does not need a separate secret.
-- If Changesets fails with `spawn pnpm ENOENT`, confirm that `setup-vp` completed successfully and that Vite+'s managed `pnpm` shim is on the subsequent step's `PATH`. Vite+ 0.3.1 provides this shim without a manual PATH adjustment. Check that `pnpm --version` matches `devEngines.packageManager.version` in `package.json`. Keep using Vite+'s managed pnpm rather than adding a second package-manager setup path.
-- A failed publish that did not create the npm version may be retried after correcting the workflow or external configuration.
-- Published npm versions are immutable. Correct a bad artifact with a new patch version rather than trying to reuse a version.
+| Failure | Action |
+| --- | --- |
+| OIDC authentication | Check the exact trust binding, `id-token: write` and GitHub-hosted runner configuration, then rerun. Do not substitute an npm token. |
+| Verification or file inspection incomplete | Do not approve deployment. |
+| Release-PR creation denied | Check the Actions PR-creation setting; do not broaden workflow permissions. |
+| Local changelog simulation needs GitHub links | Supply an appropriately scoped `GITHUB_TOKEN` locally; never commit it. The workflow uses its provided token. |
+| Changesets reports `spawn pnpm ENOENT` | Check setup-vp completion and the managed pnpm shim on subsequent steps' PATH. Its version must match package.json. Keep Vite+'s managed pnpm rather than adding another setup path. |
+| Publish fails before creating the npm version | Correct the cause and retry the workflow. |
+| Published artifact is wrong | Publish a corrected patch version. npm versions are immutable. |

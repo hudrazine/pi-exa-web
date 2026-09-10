@@ -1,10 +1,14 @@
 # Engineering Documentation
 
-`@hudrazine/pi-exa-web` provides Pi-native web search and single-page retrieval through Exa Hosted MCP. The `0.2.0` feature implementation is complete; Hosted OAuth verification and publication remain pending. The [release plan](plans/oauth-tickets.md) owns current progress, and [verification evidence](records/0.2.0-verification.md) distinguishes tested behavior from unverified deployment compatibility.
+`@hudrazine/pi-exa-web` is a source-loaded Pi extension for web search and single-page text retrieval through Exa Hosted MCP. It supports anonymous access, saved OAuth and an optional API key. The [package README](../../README.md) covers installation and everyday use; these documents explain the engineering contracts and how to maintain the package.
+
+## Project Status
+
+Version `0.2.0` is published and its implementation and release work are complete. No further implementation milestone is currently defined in these documents. The [release record](records/0.2.0-verification.md) identifies the evidence and the post-publication checks explicitly waived for this release. A closed release does not imply that waived checks were performed.
 
 ## Understand the Project
 
-Start with [product and scope](product.md), then [architecture](architecture.md). Use the following contracts for a particular behavior:
+Start with [product requirements and scope](product.md), then [architecture](architecture.md). Detailed contracts have one owner each:
 
 | Question | Authoritative document |
 | --- | --- |
@@ -17,10 +21,10 @@ Start with [product and scope](product.md), then [architecture](architecture.md)
 
 ## Develop and Release
 
-[Quality and development](quality.md) defines local checks, the supported-runtime matrix and verification responsibilities. [Release procedure](releases.md) defines Hosted smoke, publication approval and registry verification. [Remaining release work](plans/oauth-tickets.md) identifies what must happen next.
+[Quality and development](quality.md) defines local commands, test obligations, the supported-runtime matrix and package checks. [Release procedure](releases.md) defines Changesets versioning, Hosted smoke, publication approval and registry verification.
 
-The [package README](../../README.md) owns installation and end-user guidance. [Package configuration](../../package.json) owns dependency versions, runtime requirements and publication metadata. The extension exposes no supported library import API.
+[Package configuration](../../package.json) owns dependency versions, runtime requirements and publication metadata. The [Changesets policy](../../.changeset/README.md) determines when a change needs a release entry. The extension exposes no supported library import API.
 
-## Evidence
+## Historical Evidence
 
-[0.2.0 verification](records/0.2.0-verification.md) records the implementation baseline and its limits. [Initial release verification](records/initial-release.md) preserves the identity and publication evidence for `0.1.0`. Historical evidence is not a statement of current registry tags.
+Release records describe observed results and their limits; they do not define current behavior or future registry tags. The [0.2.0 record](records/0.2.0-verification.md) covers OAuth and the first Changesets-managed publication. The [0.1.0 record](records/initial-release.md) preserves the initial OIDC publication and registry smoke evidence.
