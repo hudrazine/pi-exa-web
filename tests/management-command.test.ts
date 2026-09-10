@@ -4,6 +4,7 @@ import {
   SessionManager,
   type BorderedLoader,
 } from "@earendil-works/pi-coding-agent";
+import { CombinedAutocompleteProvider } from "@earendil-works/pi-tui";
 import childProcess from "node:child_process";
 import fs from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -73,6 +74,77 @@ async function load() {
       ]),
   };
 }
+
+test("registered command completes arguments without executing management operations", async () => {
+  const { extension, notify, custom } = await load();
+  const fetch = vi.spyOn(globalThis, "fetch");
+  const spawn = vi.spyOn(childProcess, "spawn");
+  const readFile = vi.spyOn(fs, "readFile");
+  const rename = vi.spyOn(fs, "rename");
+  const command = extension.commands.get("exa")!;
+  const complete = command.getArgumentCompletions!;
+  const cases: [string, string[] | null][] = [
+    ["", ["login", "logout", "status", "strategy"]],
+    ["   ", ["login", "logout", "status", "strategy"]],
+    ["lo", ["login", "logout"]],
+    ["st", ["status", "strategy"]],
+    ["  lo", ["login", "logout"]],
+    ["login", ["login"]],
+    ["strategy", ["strategy"]],
+    ["strategy ", ["strategy anonymous-first", "strategy authenticated-first"]],
+    ["strategy au", ["strategy authenticated-first"]],
+    ["strategy an", ["strategy anonymous-first"]],
+    ["  strategy   au", ["strategy authenticated-first"]],
+    ["strategy authenticated-first", ["strategy authenticated-first"]],
+    ["strategy anonymous-first", ["strategy anonymous-first"]],
+    ["login ", null],
+    ["logout ", null],
+    ["status ", null],
+    ["LOGIN", null],
+    ["Strategy ", null],
+    ["strategy AU", null],
+    ["unknown", null],
+    ["strategy unknown", null],
+    ["strategy anonymous-first ", null],
+    ["strategy anonymous-first extra", null],
+  ];
+  for (const [prefix, expected] of cases) {
+    const result = await complete(prefix);
+    expect(result?.map((item) => item.value) ?? null, prefix).toEqual(expected);
+    for (const item of result ?? []) {
+      expect(item.label).toBe(item.value.split(" ").at(-1));
+      expect(item.description).toEqual(expect.any(String));
+      expect(item.description!.length).toBeGreaterThan(0);
+    }
+  }
+  const descriptions = await complete("");
+  expect(descriptions![0].description).toContain("interactive Pi");
+  expect(descriptions![1].description).toContain("local");
+  expect(descriptions![2].description).toContain("local");
+
+  const provider = new CombinedAutocompleteProvider([command], directory);
+  const input = "/exa strategy au";
+  const suggestions = await provider.getSuggestions([input], 0, input.length, {
+    signal: new AbortController().signal,
+  });
+  expect(suggestions?.items).toHaveLength(1);
+  const applied = provider.applyCompletion(
+    [input],
+    0,
+    input.length,
+    suggestions!.items[0],
+    suggestions!.prefix,
+  );
+  expect(applied.lines).toEqual(["/exa strategy authenticated-first"]);
+  expect(applied.cursorCol).toBe(applied.lines[0].length);
+  expect(notify).not.toHaveBeenCalled();
+  expect(custom).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
+  expect(spawn).not.toHaveBeenCalled();
+  expect(readFile).not.toHaveBeenCalled();
+  expect(rename).not.toHaveBeenCalled();
+  expect(await fs.readdir(directory)).not.toContain("exa-web");
+});
 
 test.each(["rpc", "json", "print"])(
   "%s login gives local TUI guidance without starting UI, browser, listener or network",

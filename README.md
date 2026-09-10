@@ -60,6 +60,8 @@ The default strategy starts with anonymous access. Credentials are not required 
 /exa strategy authenticated-first
 ```
 
+In interactive Pi, `/exa ` offers subcommand completions with short descriptions. After `/exa strategy `, completion offers `anonymous-first` and `authenticated-first`.
+
 Run `/exa login` in a local interactive Pi terminal. Pi displays a temporary authorization URL and attempts to open your browser; you can open the URL manually if that fails. Complete authorization within five minutes, or use Pi's cancel key to stop. Login uses a loopback callback on `127.0.0.1` and saves credentials only after checking the new connection. Failed re-login preserves existing credentials. A concurrent login, refresh or logout that changes saved credentials causes a conflict; start login again.
 
 RPC, JSON and print modes cannot start login. Log in through local interactive Pi using the same agent directory first; saved credentials and refresh can then serve ordinary tools in those modes. Remote callback relays and SSH forwarding are not provided.
