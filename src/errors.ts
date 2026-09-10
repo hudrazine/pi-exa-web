@@ -1,6 +1,6 @@
 const messages = {
   "anonymous-rate-limit":
-    "Exa anonymous MCP rate limit reached. Set EXA_API_KEY from https://dashboard.exa.ai/api-keys or retry later.",
+    "Exa anonymous MCP rate limit reached. Run /exa login, set EXA_API_KEY from https://dashboard.exa.ai/api-keys or retry later.",
   "authenticated-rate-limit": "Exa authenticated rate limit reached. Retry later.",
   "credits-exhausted": "Exa account credits are exhausted.",
   authentication: "Exa authentication failed.",
@@ -10,6 +10,10 @@ const messages = {
   tool: "Exa returned an unsuccessful or unexpected tool response.",
   storage: "Could not read or save Exa settings or credentials.",
   "storage-conflict": "Exa credentials changed. Start login again.",
+  "login-in-progress": "Exa login is already in progress.",
+  "login-timeout": "Exa login timed out. Start login again.",
+  "login-denied": "Exa login was denied.",
+  "login-cancelled": "Exa login cancelled.",
   lifecycle: "pi-exa-web MCP client is closed",
 } as const;
 

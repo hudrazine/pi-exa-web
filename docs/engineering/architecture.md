@@ -1,15 +1,17 @@
 # Architecture
 
-`pi-exa-web` is a source-loaded Pi extension with separate lazy MCP connections for anonymous, OAuth and API-key access. Pi-facing registration and rendering are separated from MCP lifecycle and authentication policy. This document describes merged PR1–PR3 and local PR4 changes over `0.1.0`. Saved OAuth refresh, local logout and runtime selection are implemented; interactive login and management UI remain [planned work](proposals/oauth-routing.md).
+`pi-exa-web` is a source-loaded Pi extension with separate lazy MCP connections for anonymous, OAuth and API-key access. Pi-facing registration and rendering are separated from MCP lifecycle and authentication policy. This document describes merged PR1–PR4 and local PR5 changes over `0.1.0`, including interactive login and management. [Hosted verification and release work](plans/oauth-routing.md) remain pending.
 
 ## Responsibilities and Call Flow
 
 | Boundary | Responsibility | Source |
 | --- | --- | --- |
-| Extension entry | Read `EXA_API_KEY` at initialization, construct the client, register tools and `/exa strategy`, and register shutdown cleanup | [`src/index.ts`](../../src/index.ts) |
+| Extension entry | Read `EXA_API_KEY` at initialization, construct the client, register tools and `/exa`, and register shutdown cleanup | [`src/index.ts`](../../src/index.ts) |
+| Management command | Validate subcommands, gate login by `ctx.mode`, own transient/cancellable UI and best-effort browser launch, display safe local status and commit results | [`src/management-command.ts`](../../src/management-command.ts) |
 | Pi adapter and renderer | Define schemas, invoke intent-level search/fetch operations, supply stable details, and render Pi results | [`src/register-tools.ts`](../../src/register-tools.ts) |
 | Exa MCP client | Manage lazy route connections, map tool arguments, snapshot settings, classify HTTP/MCP failures, forward cancellation, and close resources | [`src/exa-mcp-client.ts`](../../src/exa-mcp-client.ts) |
 | OAuth state manager | Resolve saved credentials, refresh under the SQLite transaction, commit terminal rejection, and perform local logout | [`src/oauth-state.ts`](../../src/oauth-state.ts) |
+| Staged login | Own one operation's provider, loopback listener, five-minute deadline, discovery/exchange, read-only validation connection and expected-revision commit | [`src/oauth-login.ts`](../../src/oauth-login.ts) |
 | Anonymous-first policy | Select routes around SDK calls, apply the strategy snapshot and process-local cooldown, with bounded probes and one bidirectional fallback | [`src/anonymous-first.ts`](../../src/anonymous-first.ts) |
 
 The Pi adapter calls private `search` or `fetch` operations. The MCP client maps those intents to `web_search_exa` and `web_fetch_exa` on `https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa` for anonymous/API-key access or `https://mcp.exa.ai/mcp/oauth` for OAuth. The [authentication policy](design/anonymous-first.md) selects routes outside `Client.callTool`; middleware applies route credentials and observes HTTP evidence without replaying bodies. Each route classifies MCP tool errors before returning successful text, allowing only exact authenticated 402/429 prefixes to influence routing. The result returns as text, the actual authentication route and optional fallback metadata; the adapter supplies the [public result metadata](design/web-tools.md).
@@ -24,7 +26,17 @@ Each `Client.callTool` receives the combined caller/lifecycle signal. Middleware
 
 An HTTP 404 permits one fresh connection per route attempt only when the rejected tool request carried a server-issued session ID. Reconnection does not reset the anonymous probe or OAuth 401 budget. Retired connections stop accepting new calls and close after their existing users finish, so parallel responses can still be classified. Ambiguous transport failures are not automatically replayed.
 
-`session_shutdown` invokes idempotent close. It immediately aborts active calls, retry waits, refresh, logout, lock acquisition and initialization, and rejects new work. Initialized sessions terminate in parallel under one shared one-second grace, after which all clients and transports close even if termination fails or stalls. Termination requests are independent of the aborted operation signal. Termination uses the known token without starting refresh. OAuth transaction cleanup is awaited. Anonymous block state is cleared.
+`session_shutdown` invokes idempotent close. It immediately aborts active calls, login, retry waits, refresh, logout, lock acquisition and initialization, and rejects new work. Initialized route sessions terminate in parallel under one shared one-second grace, after which all clients and transports close even if termination fails or stalls. Termination requests are independent of the aborted operation signal. Termination uses the known token without starting refresh. Login closes its listener and temporary transports immediately on abort; it adds no termination grace. Login and OAuth transaction cleanup are awaited, and the login UI dismisses on settlement. Anonymous block state is cleared.
+
+## Interactive Management
+
+Only `/exa login` with `ctx.mode === "tui"` starts authorization. `hasUI` is insufficient because RPC also exposes UI methods. `ctx.ui.custom` holds a public Pi `BorderedLoader` and the URL; cancel keys and disposal abort the operation and clear the URL. Browser launch uses an argument array with `open`, `rundll32` or `xdg-open`, no shell, and discarded output. Failure leaves the transient URL available. Notices contain fixed messages; no management operation appends assistant messages or tool results.
+
+Each login binds `127.0.0.1:0` before building its exact redirect URI. Its SDK `OAuthClientProvider` starts without saved tokens and holds SDK saves/invalidation in memory. Saved registration is reusable only for that redirect URI and the resolved issuer. The callback admits one GET on `/callback`, verifies state and unambiguous parameters before SDK `finishAuth`, and aborts on a detected duplicate. Callback responses report receipt, not successful persistence. Only an HTTPS authorization URL without username/password reaches the screen/browser.
+
+The staged record passes the existing schema, then initializes a fresh Client/transport using a read-only minimal token provider. Successful SSE responses pass directly to the SDK so validation does not wait for EOF. The combined login signal also cancels the SDK initialization wait. Validation cannot refresh, register, start login or send tools; its connection never enters the route cache. The validation connection, completion transport and listener close before the OAuth commit lock is acquired. Expected revision protects against concurrent login/refresh/logout. Successful rename is not undone by a later abort. A successful login retires old normal OAuth connections through the same identity-aware mechanism as logout.
+
+`getStatus` reads settings and OAuth without resolution, refresh, network, SQLite acquisition or file creation. It exposes only strategy, one of four local OAuth states, startup key presence and a local authentication candidate. Missing expiry is locally available; `loginRequired` and expired tokens without refresh capability require login. It provides no balance or remote-validity claim.
 
 ## Private State Foundation
 

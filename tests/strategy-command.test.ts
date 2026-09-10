@@ -46,14 +46,15 @@ test("strategy command validates before saving and reports only committed settin
     "",
     "strategy SECRET",
     "strategy authenticated-first extra",
-    "login",
-    "status",
-    "logout",
+    "login extra",
+    "status extra",
+    "logout extra",
+    "unknown",
   ]) {
     notify.mockClear();
     await command(args);
     expect(notify).toHaveBeenCalledExactlyOnceWith(
-      "Usage: /exa strategy [anonymous-first|authenticated-first]",
+      "Usage: /exa login | logout | status | strategy [anonymous-first|authenticated-first]",
       "info",
     );
     expect(await fs.readdir(dir)).not.toContain("exa-web");

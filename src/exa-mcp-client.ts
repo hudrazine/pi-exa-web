@@ -21,6 +21,7 @@ import { AnonymousRateLimitError, ExaError, readRetryAt, safeError } from "./err
 import { createStateStore } from "./state-store.ts";
 import { oauthResource, type OAuthState, type Strategy } from "./state-schema.ts";
 import { createOAuthState, OAuthUnavailableError, usableOAuth } from "./oauth-state.ts";
+import { loginOAuth } from "./oauth-login.ts";
 import type { ExaWebClient } from "./register-tools.ts";
 
 const EXA_MCP_ENDPOINT = new URL("https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa");
@@ -54,8 +55,17 @@ interface Observation {
 export interface ExaMcpClient extends ExaWebClient {
   getStrategy(): Promise<Strategy>;
   setStrategy(strategy: Strategy): Promise<Strategy>;
+  login(onAuthorization: (url: URL) => void, signal?: AbortSignal): Promise<void>;
+  getStatus(): Promise<ExaStatus>;
   logout(signal?: AbortSignal): Promise<void>;
   close(): Promise<void>;
+}
+
+export interface ExaStatus {
+  strategy: Strategy;
+  oauth: "unconfigured" | "locally-available" | "expired-refreshable" | "login-required";
+  apiKey: boolean;
+  authentication: "oauth" | "api-key" | "unavailable";
 }
 
 export function createExaMcpClient(
@@ -80,6 +90,7 @@ export function createExaMcpClient(
     return apiKey === undefined ? undefined : "api-key";
   });
   let closePromise: Promise<void> | undefined;
+  let pendingLogin: Promise<void> | undefined;
 
   function routeFetch(route: AuthRoute): FetchLike {
     return async (input, init) => {
@@ -384,6 +395,7 @@ export function createExaMcpClient(
         await Promise.all([...resources].map(dispose));
         await pendingCleanup;
         await oauth.settled();
+        await Promise.allSettled(pendingLogin === undefined ? [] : [pendingLogin]);
         await Promise.allSettled(
           Object.values(routes).flatMap((state) =>
             state.connecting === undefined ? [] : [state.connecting],
@@ -394,18 +406,60 @@ export function createExaMcpClient(
     return closePromise;
   }
 
+  async function invalidateOAuth(revision: number): Promise<void> {
+    // Include shared initialization even when every caller has stopped waiting for it.
+    for (const connection of resources) {
+      if (connection.oauthState && connection.oauthState.revision < revision)
+        connection.retired = true;
+    }
+    const active = routes.oauth.connection;
+    if (active?.retired) await retire("oauth", active);
+  }
+
   return {
+    login(onAuthorization, callerSignal) {
+      const signal = AbortSignal.any([lifecycle.signal, ...(callerSignal ? [callerSignal] : [])]);
+      if (signal.aborted) return Promise.reject(signal.reason);
+      if (pendingLogin) return Promise.reject(new ExaError("login-in-progress"));
+      pendingLogin = loginOAuth(store, baseFetch, onAuthorization, signal)
+        .then((committed) => invalidateOAuth(committed.revision))
+        .finally(() => {
+          pendingLogin = undefined;
+        });
+      return pendingLogin;
+    },
+    async getStatus() {
+      lifecycle.signal.throwIfAborted();
+      const { strategy } = await store.readSettings();
+      const state = await oauth.read();
+      lifecycle.signal.throwIfAborted();
+      const status: ExaStatus["oauth"] =
+        state.credentials === null
+          ? "unconfigured"
+          : state.credentials.loginRequired
+            ? "login-required"
+            : usableOAuth(state)
+              ? "locally-available"
+              : state.credentials.tokens.refresh_token
+                ? "expired-refreshable"
+                : "login-required";
+      return {
+        strategy,
+        oauth: status,
+        apiKey: apiKey !== undefined,
+        authentication:
+          status === "locally-available" || status === "expired-refreshable"
+            ? "oauth"
+            : apiKey === undefined
+              ? "unavailable"
+              : "api-key",
+      };
+    },
     async logout(callerSignal) {
       const signal = AbortSignal.any([lifecycle.signal, ...(callerSignal ? [callerSignal] : [])]);
       signal.throwIfAborted();
       const committed = await oauth.logout(signal);
-      // Include shared initialization even when every caller has stopped waiting for it.
-      for (const connection of resources) {
-        if (connection.oauthState && connection.oauthState.revision < committed.revision)
-          connection.retired = true;
-      }
-      const active = routes.oauth.connection;
-      if (active?.retired) await retire("oauth", active);
+      await invalidateOAuth(committed.revision);
     },
     async getStrategy() {
       lifecycle.signal.throwIfAborted();
