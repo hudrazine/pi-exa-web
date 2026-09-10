@@ -1,33 +1,29 @@
-# SQLite Coordination for Local State
+# SQLite Coordination for OAuth State
 
-**Status:** Accepted for `0.2.0`, amended on 2026-09-09; PR2 foundation and PR4/PR5 OAuth integration merged with OS CI verified; unreleased
+**Status:** Accepted for `0.2.0`, with the 2026-09-09 amendment below. Implementation and supported-platform evidence are recorded [separately](../records/0.2.0-verification.md).
 
-## Original Decision — Partially Superseded
+## Decision
 
-Use Node's bundled `node:sqlite` transactions to coordinate settings and OAuth JSON updates between Pi processes. Raise the target release's Node.js minimum to `>=24.15.0`, accepting that release's **Stability 1.2 — Release candidate** API. The implemented package still uses the runtime declared in [package.json](../../../package.json).
+Use Node's bundled `node:sqlite` solely to exclude concurrent OAuth transactions while keeping JSON authoritative. Each operation owns a separate connection to canonical `oauth.lock.sqlite`; no same-process mutex is needed. Settings contain one replaceable strategy and use validated last-write-wins JSON replacement without revisions or a lock.
 
-Keep JSON as the authoritative state format. Use separate coordination databases for settings and OAuth so a settings change does not wait behind token refresh. The [lock implementation contract](../design/oauth-state-locking.md) owns acquisition and cleanup; the [state proposal](../proposals/oauth-state.md) owns revision and commit semantics.
+The [lock contract](../design/oauth-state-locking.md) defines acquisition and cleanup. [OAuth state](../design/oauth-state.md) defines revision and commit semantics. Those documents own current behavior.
 
-## Current Decision — 2026-09-09 Amendment
+## Rationale
 
-This amendment supersedes the original settings coordination requirement above and the same-process mutex requirement in the earlier lock design. JSON storage, SQLite for OAuth exclusion, and the higher Node.js minimum remain accepted. Nothing in this record establishes implementation or verification.
+OAuth needs ownership throughout read/refresh/write, no takeover from a live owner, bounded cancellable acquisition and recovery after process death. SQLite delegates ownership and recovery to SQLite/OS locks, avoiding a private crash-recovery protocol and separately packaged native bindings. Moving credentials into SQLite is unnecessary.
 
-Use only `oauth.lock.sqlite`, with a transaction-owned connection for each OAuth operation. SQLite's [connection isolation](https://www.sqlite.org/isolation.html) applies to separate connections in the same thread/process as well as separate processes; `BEGIN IMMEDIATE` excludes other writers. Under this connection discipline, the additional local mutex duplicates exclusion and is removed. Canonical paths, abortable BUSY polling, bounded acquisition, and cleanup remain required. This avoids a second wait queue and acquisition/cleanup protocol; competing local operations may instead open more connections and poll SQLite.
+[SQLite transactions](https://www.sqlite.org/lang_transaction.html) allow one writer per database. `BEGIN IMMEDIATE` acquires ownership without an application table; returning from the synchronous call does not end the transaction. The [pager](https://www.sqlite.org/lockingv3.html) uses OS locks. [Connection isolation](https://www.sqlite.org/isolation.html) also applies to separate connections in one process, so a local mutex would duplicate exclusion and introduce another queue/cleanup protocol. The tradeoff is that competing operations can open more connections and poll SQLite.
 
-Settings contain one replaceable strategy value and are read at every logical call boundary. They need neither OAuth's stale-credential detection nor login commit revision comparison. Use validated JSON atomic replacement with last-write-wins, without a settings revision, coordination DB, or lock. Concurrent successful settings writes may overwrite each other; no merge or conflict notification is promised. A failed writer must not overwrite or clean up another writer's result. Settings remain usable independently of OAuth lock contention or SQLite availability. The [state design](../proposals/oauth-state.md#transactions-and-revisions) defines exact write and failure semantics.
+OAuth revisions and revisioned null-credential logout prevent stale login commits and rotating-token reuse. Settings do not require those guarantees: one successful complete replacement can supersede another, and settings remain usable while refresh owns the OAuth lock or SQLite is disabled.
 
-Keep OAuth revisions, null-credential logout records, and exclusion across refresh and commit. These protect against rotating-token reuse and stale login commits; they are not removed by the settings simplification.
+## Consequences
 
-## Context and Rationale
+The decision raises the Node minimum to `>=24.15.0`, accepting that release's [Stability 1.2 — Release candidate SQLite API](https://nodejs.org/download/release/v24.15.0/docs/api/sqlite.html). No native-addon build/ABI dependency is added. SQLite loads only for OAuth transactions and fails safely when unavailable.
 
-The OAuth state transactions require exclusion throughout read/refresh/write, no takeover from a live owner, recovery after owner death, and bounded cancellable acquisition. SQLite delegates ownership and crash recovery to SQLite/OS locks. This avoids a private crash-recovery protocol and separately packaged native bindings while retaining JSON storage; moving credentials into SQLite is unnecessary for these requirements.
+Brief synchronous local I/O is accepted; contention waits and JSON I/O remain asynchronous. Slow filesystem calls can block Pi's event loop and exceed the acquisition budget. The deadline is not a hard response-time guarantee or a lease. Add no Worker without a concrete responsiveness problem.
 
-[SQLite transactions](https://www.sqlite.org/lang_transaction.html) allow one writer per database. `BEGIN IMMEDIATE` acquires a write transaction without an application table, and returning from the synchronous call does not end the transaction. The [pager](https://www.sqlite.org/lockingv3.html) uses OS locks. At decision time, holding this transaction across asynchronous refresh and external JSON replacement was a source-backed composition inference; implementation evidence is recorded below. SQLite rollback does not undo JSON replacement or remote token rotation.
+SQLite rollback cannot undo a JSON rename or remote token rotation. Only local filesystems using one canonical coordination protocol are supported. Never replace this boundary with unlocked OAuth access. The [quality criteria](../quality.md#lock-and-state-cases) cover ownership across awaits, process death, commit failures and cleanup; Hosted compatibility remains a separate verification obligation.
 
-## Consequences and Validation
+## Decision History
 
-Implementation update: PR2 provides private SQLite exclusion and JSON replacement. Local fixtures cover holding ownership across awaits and JSON commit, contention, process-death recovery and cleanup. This verifies that part of the composition inference above; PR2's [four-job CI passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016). PR4 verifies refresh/token rotation against local services across two processes, failed commits and cleanup error precedence. PR5 adds staged login commit conflicts with login/refresh/logout. Both integrations are merged with four-job CI verified; see the [PR4](../plans/oauth-verification.md#pr4-verification) and [PR5](../plans/oauth-verification.md#pr5-verification) records. These results do not establish Hosted token issuance or rotation behavior.
-
-[Node 24.15](https://nodejs.org/download/release/v24.15.0/docs/api/sqlite.html) supplies synchronous database operations. Accept brief synchronous local I/O for coordination, with asynchronous contention waits and JSON I/O. Slow filesystem calls can block Pi's event loop and exceed the acquisition budget; the budget is not a hard response-time guarantee. Add no Worker without a concrete responsiveness problem.
-
-There is no separate native addon build/ABI requirement, but the release-candidate API, Pi loader, process-death recovery, and supported local filesystems still need the [runtime and lock checks](../plans/oauth-verification.md#lock-and-state-cases). The protocol does not support network filesystems or unlocked OAuth fallback when SQLite is unavailable; settings replacement does not use SQLite. This decision originally accepted only coordination. The surrounding [OAuth and routing design](../proposals/oauth-routing.md) and [state lifecycle](../proposals/oauth-state.md) were subsequently accepted on 2026-09-09 and implemented through PR5. Hosted verification remains pending.
+The original accepted decision coordinated both settings and OAuth using separate SQLite databases and included a same-process mutex. The 2026-09-09 amendment supersedes only those settings-lock and local-mutex requirements: complete replacement is sufficient for the single settings value, and transaction-owned connections already exclude concurrent operations within a process. JSON authority, OAuth revisions, SQLite exclusion and the higher Node minimum remain unchanged. This history explains the supersession; it is not an alternate supported storage protocol.

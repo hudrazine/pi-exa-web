@@ -16,4 +16,4 @@ The release established the scoped package identity. The unscoped `pi-exa-web@0.
 
 The publication used npm Trusted Publisher and the `npm-production` environment with one reviewer, self-review permitted, and deployments restricted to `main`. No npm token or GitHub secret was used. npm publishing access was set to require 2FA and disallow bypass-2FA tokens. The [release procedure](../releases.md#trusted-publisher-configuration) owns the maintained trust-binding requirements.
 
-The first Changesets-managed release is a separate, [outstanding verification](../plans/changesets-release-automation.md); the initial OIDC publication does not establish that the full Changesets release-PR path works.
+The first Changesets-managed release is a separate, [outstanding verification](../plans/oauth-tickets.md#t14--authorized-publication-and-registry-verification); the initial OIDC publication does not establish that the full Changesets release-PR path works.

@@ -1,10 +1,10 @@
 # Quality and Development
 
-Changes must preserve the [product requirements](product.md), [tool contract](design/web-tools.md), and [authentication policy](design/anonymous-first.md). Normal checks use local transports and deterministic timing; they must not depend on Hosted Exa availability or consume its quota. The [OAuth verification specification](plans/oauth-verification.md) maps PR1 connections, PR2 storage, PR3 routing/commands, PR4 non-interactive OAuth and PR5 staged login/management. PR5 passed four-job CI; Hosted verification remains pending.
+Changes must preserve the [product requirements](product.md) and the contracts under [design](README.md#understand-the-project). This document owns verification obligations and their test locations. [Execution evidence](records/0.2.0-verification.md) records what has passed; [release procedure](releases.md) owns Hosted and registry smoke.
 
 ## Local Workflow
 
-Use Vite+ and the runtime/package-manager versions in [`package.json`](../../package.json):
+Use Vite+ with the runtime/package-manager versions in [package.json](../../package.json):
 
 ```sh
 vp install
@@ -12,9 +12,11 @@ vp run check
 vp run test
 ```
 
-`check` covers formatting, linting, and types. Pi loads TypeScript source directly, so there is no build step. For package changes, inspect `vp pm pack -- --dry-run --json` without creating a tarball and verify loading through Pi's real extension loader. Publication must exclude tests, fixtures, local state, and secrets.
+Check covers formatting, lint and types. There is no build step. Tests use real SDK clients against local HTTP services, fake time for delays, synchronization barriers for concurrency and real child processes where process isolation matters. Preserve HTTPS OAuth storage contracts by forwarding allowed HTTPS fixture URLs to local services in tests. Never contact Hosted Exa or open a real browser during normal checks.
 
-## Verification Responsibilities
+Derive assertions from the contract, not private filenames or class structure. Revalidate OAuth/lifecycle fixtures on SDK upgrades. Test successful text preservation separately from safe error handling, and avoid duplicate suites for the same obligation.
+
+## Feature Coverage
 
 | Area | Required evidence | Existing test source |
 | --- | --- | --- |
@@ -30,20 +32,48 @@ vp run test
 | Management UI | Actual loader, TUI versus RPC/JSON/print, temporary URL removal, best-effort browser opening, cancel/dispose/timeout, commit-before-notice, local status and saved-session secrecy | [`tests/management-command.test.ts`](../../tests/management-command.test.ts) |
 | SDK integration | Real MCP client/transport against a local server: both strategies and settings snapshots, exact 402/429 classifiers and near misses, intent replay, route-specific headers/sessions, concurrent route/failure evidence, per-route initialization sharing, HTTP cancellation, session-only recovery, in-flight closure, one shared termination grace, repeated shutdown | [`tests/exa-mcp-client.test.ts`](../../tests/exa-mcp-client.test.ts) |
 
-Test expectations must follow the relevant contract, not private filenames or class structure. Successful text preservation and error secrecy are distinct obligations. The [tool contract](design/web-tools.md#errors-and-secret-handling) owns the safe-output boundary. `tests/exa-mcp-client.test.ts` also loads the source through Pi's real loader, checks secret-free error objects and rendering, and writes error results with Pi's SessionManager to verify persisted conversation records.
+The management suite also verifies fixed argument candidates, whitespace/case/invalid input, descriptions, Pi's actual completion application and absence of completion side effects. Strategy validation, commit-before-notification and safe storage failures use [strategy-command.test.ts](../../tests/strategy-command.test.ts). Settings snapshots, including a child-process write affecting the next call, use the MCP client suite.
 
-`tests/strategy-command.test.ts` verifies production loader registration, command validation, commit-before-notification and safe storage failures. `tests/exa-mcp-client.test.ts` uses a child-process settings write to verify the next-call boundary. `tests/state-loader.test.ts` also covers production settings errors in saved conversations.
+## Boundary Cases
 
-PR2 adds `tests/oauth-lock.test.ts` and `tests/state-store.test.ts` for L1–L3, revisions, complete replacement, cleanup, same/child-process settings ordering and directory isolation. `tests/state-loader.test.ts` checks real Pi/jiti loading of SQLite, storage-error rendering and SessionManager records, and the effective runtime.
+Exercise both tools and strategies with no credentials, each credential alone, both credentials, expired/refreshable OAuth and login-required state. Anonymous success must not read OAuth. Check zero/past/2,000 ms/over-limit/no-header probe timing, header precedence and epoch units, the final 429 deadline, concurrent cooldown maxima and success reset.
 
-The [CI workflow](../../.github/workflows/ci.yml) defines development-runtime jobs on Linux x64, macOS arm64 and Windows x64, plus Node 24.15.0 on Linux. Every job runs the full check/test suite and asserts the effective test-process runtime. Local Linux results do not establish macOS/Windows success. PR1–PR5 are merged with CI evidence recorded in the [verification specification](plans/oauth-verification.md); PR5's final `db30761` passed [all four jobs](https://github.com/hudrazine/pi-exa-web/actions/runs/34440460305). PR6 requires its own final-commit CI result, even when only documentation changes.
+Classifier cases include exact authenticated 402/429 prefixes and near misses: wrong route/tool, leading text, later block, missing `isError`, natural-language limits and raw HTTP 402. Combine session 404, anonymous probe, OAuth 401 and fallback so no budget resets or third route can appear. Final failures must retain only the final route's code/retry time.
 
-The minimum-runtime job selects `vp env use 24.15.0` and invokes `vp check` / `vp test` directly. `vp run` scripts resolve pnpm's local Node shim pinned by `devEngines.runtime`, which otherwise runs 24.19.0 even after a session override. Development jobs retain `vp run check` / `vp run test`; the test-process assertion guards both paths.
+Test cancellation during discovery, exchange, validation, callback wait, refresh, lock acquisition, shared initialization, anonymous delay and tool HTTP. Surviving shared-init waiters must remain usable; abort must never become fallback.
 
-## Hosted and Release Verification
+Secret sentinels cover headers, credential-bearing URLs, nested SDK errors/causes, formatter suffixes, tokens/client secrets, challenges, authorization URLs/codes/state/verifiers and storage failures. Verify exceptions, details, display, notifications, logs and actual SessionManager records, not only string conversion. The temporary login screen is the only permitted authorization-URL display. Real Pi loaders exercise production tool/command/shutdown registration; the storage test extension exercises lazy SQLite loading through the same loader.
 
-Use bounded manual smoke tests for deployment compatibility. Follow the [release procedure](releases.md#verification) to install and run the exact registry version in a new isolated `PI_CODING_AGENT_DIR` with `EXA_API_KEY` unset. Make one anonymous search and one anonymous fetch; do not reuse saved OAuth or intentionally exhaust quota. Live OAuth verification has its own [release condition](plans/oauth-verification.md#hosted-oauth-release-smoke).
+Login tests include SSE initialization before EOF, cancellation of a pending SSE initialize response, closed streams and preservation of committed state. Browser launch is intercepted. Callback acceptance and committed-login success are separate assertions. Inject the five-minute deadline without replacing real HTTP timing.
 
-T12 covers documentation, local tests, supported-runtime CI and package contents. T13 covers Hosted OAuth login and restart/refresh. T14 covers authorized publication and registry-installed verification. Passing T12 does not satisfy T13 or authorize T14.
+## Lock and State Cases
 
-The [release procedure](releases.md) owns registry-artifact and post-publication checks. [Initial release evidence](records/initial-release.md) records completed loader, local-path, registry, and OIDC verification. Historical results do not establish current registry tags or repository settings. The [Changesets plan](plans/changesets-release-automation.md) identifies the remaining automation verification.
+| Group | Required assertions |
+| --- | --- |
+| L1: Runtime loading and contention | Load `node:sqlite` through the actual package/Pi loader. Two processes racing first use of an absent coordination DB must admit only one protected operation; confirm numeric BUSY classification, event-loop progress while polling, and acquisition after release. Repeat against the retained DB. Exercise separate connections from same-process instances and canonical path aliases, with no local mutex. |
+| L2: Transaction lifetime and recovery | Hold ownership across an awaited operation and JSON replacement; a contender must remain excluded. Verify acquisition after ordinary cleanup and forced owner exit using the same DB path, without manual deletion. Use synchronization messages and a generous recovery deadline rather than asserting instantaneous OS cleanup. |
+| L3: Bounded waits and cleanup | Abort/timeout during SQLite acquisition or polling never enters later. Abort observed immediately after synchronous acquisition cleans up before entering. Fake time checks the acquisition budget including connection setup and polling. Inject module-unavailable, non-BUSY, rollback, and close failures; verify safe error propagation and best-effort cleanup without fallback or stale-file deletion. Do not claim synchronous I/O itself is interruptible. |
+| L4: Transaction integration | Use the rotating-token fake server to verify one refresh across two Pi processes and reuse of the committed token, for proactive and SDK-401 recovery. Login/logout/refresh races retain revision conflict semantics. A held OAuth lock does not block settings or a separate directory. |
+| L5: Commit failure integration | Verify complete reads across replacement for settings and OAuth, failed write/rename, unchanged committed memory on failed commit, and remote token rotation followed by persistence failure. A failed settings writer must not undo another writer's successful replacement or delete its temporary file. Assert OAuth lock cleanup and no alternate-credential fallback. |
+| Settings replacement | Validate version/strategy and reject corrupt, unknown-version, or unreadable existing state without overwriting it. Race two same-process writers and two child-process writers with controlled replacement order; the last successful replacement wins regardless of command start/notification order. Readers see complete valid records, with no revision, merge, or storage-conflict result for concurrent valid writes. Verify settings reads/writes do not load SQLite or create a coordination DB, including when SQLite is unavailable or the OAuth lock is held. |
+
+| Obligation | Test source |
+| --- | --- |
+| L1: first/retained DB contention, same-process connections, canonical aliases and actual loader | [state-store.test.ts](../../tests/state-store.test.ts), [state-loader.test.ts](../../tests/state-loader.test.ts) |
+| L2: ownership across await/rename, normal release and forced owner exit | [state-store.test.ts](../../tests/state-store.test.ts) and synchronized state workers |
+| L3: setup-inclusive deadline, abort immediately after acquisition, BUSY versus other errors, unavailable module and rollback/close failure | [oauth-lock.test.ts](../../tests/oauth-lock.test.ts) |
+| L4: one remote refresh for proactive/401 recovery across two processes | [oauth-process.test.ts](../../tests/oauth-process.test.ts); login/refresh/logout conflicts in [login-process.test.ts](../../tests/login-process.test.ts) |
+| L5: complete records, failed commit and remote rotation, no old-token resend or alternate selection | [state-store.test.ts](../../tests/state-store.test.ts), [oauth-state.test.ts](../../tests/oauth-state.test.ts), [oauth-routing.test.ts](../../tests/oauth-routing.test.ts), [oauth-login.test.ts](../../tests/oauth-login.test.ts) |
+| Settings independence, controlled same/child-process replacement ordering, permissions and SQLite-disabled access | [state-store.test.ts](../../tests/state-store.test.ts), [state-loader.test.ts](../../tests/state-loader.test.ts) |
+
+These fixtures verify local transaction composition and rotating-token behavior; they do not prove Hosted refresh-token issuance.
+
+## Runtime and Package Checks
+
+The [CI workflow](../../.github/workflows/ci.yml) runs the full check/test suite on Linux x64, macOS arm64 and Windows x64 using the declared development runtime, plus Linux x64 on Node 24.15.0. Tests assert their effective Node version, OS and CPU. Local Linux results do not substitute for another platform; require successful checks on the final PR revision.
+
+The minimum job selects `vp env use 24.15.0` and invokes `vp check` / `vp test` directly. `vp run` scripts resolve pnpm's `devEngines.runtime` shim and can switch back to the development runtime. Remove a local override with `vp env use --unset` after minimum-version validation.
+
+For package changes, run `vp pm pack -- --dry-run --json` and verify loading through Pi's real extension loader. The artifact must contain only LICENSE, README, package.json and required TypeScript source: no tests, fixtures, local state, secrets, server runtime dependencies or generated distribution. Use `vp run changeset status` to inspect release intent without generating versions.
+
+Local/CI/package success does not establish Hosted compatibility or authorize publication. The [remaining release gates](plans/oauth-tickets.md) track those separately.

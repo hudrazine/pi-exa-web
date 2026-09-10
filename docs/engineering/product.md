@@ -14,14 +14,14 @@
 
 The [tool contract](design/web-tools.md) owns caller-visible behavior and the safe-error boundary. The [authentication contract](design/anonymous-first.md) owns credential use and replay. The [architecture](architecture.md) explains how these requirements are implemented; [quality criteria](quality.md) define the required evidence.
 
-## Implemented Scope
+## Scope and Constraints
 
-The web tools remain Exa-only with one URL per fetch. Merged, unreleased changes add separate anonymous/OAuth/API-key connections, saved routing strategies, bounded anonymous probes/cooldown, one credit-error fallback, and safe failure messages. OAuth supports local-TUI login with validation before revision-protected storage, non-interactive refresh, one same-route 401 recovery, local status and logout. JSON replacement and SQLite exclusion coordinate OAuth state; quota state stays process-local. Installation and end-user usage belong in the [README](../../README.md).
+The package supports anonymous access, saved OAuth and an optional startup API key. Users can select anonymous-first or authenticated-first routing and manage OAuth through Pi commands. Anonymous-first favors account-credit conservation and may wait briefly; it does not promise the shortest latency.
 
-Advanced Exa search, Agent features, direct Exa API integration, alternate providers, custom endpoints/proxies, caching, telemetry, client-side rate scheduling, and configurable retry policies are outside this scope.
+OAuth login requires local interactive Pi. Saved credentials and non-interactive refresh work in other Pi modes. State belongs to the Pi agent directory on a supported local filesystem, independently of the working project. There is no credential migration from other packages.
 
-## Development Direction
+Keep one package, one source-loaded extension and Exa as the backend. Advanced Exa search, Agent features, direct Exa API integration, alternate providers, custom endpoints/proxies, multiple accounts, keychains, remote callback relays or automatic SSH forwarding, network-filesystem persistence, result caching, telemetry, quota scheduling and configurable retry policies are outside the scope. Do not introduce a public SDK, stdio MCP server or build step.
 
-OAuth login and selectable access strategies target `0.2.0`, together with SQLite coordination and the higher Node.js minimum. PR1–PR5 are merged with CI verified. PR6 prepares documentation and package evidence; Hosted OAuth smoke and release verification remain pending. The [OAuth plan](plans/oauth-routing.md) defines delivery and links to the contracts.
+## Completion and Release
 
-Changesets release automation is implemented. Its first complete managed publication remains an independent [verification task](plans/changesets-release-automation.md).
+The `0.2.0` implementation includes routing, safe errors, OAuth management, persistence and command completion. Feature completion does not prove Hosted registration, consent or refresh-token issuance. The [release plan](plans/oauth-tickets.md) separates implementation evidence, Hosted compatibility and authorized publication.
