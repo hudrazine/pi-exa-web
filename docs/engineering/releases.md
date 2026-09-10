@@ -4,7 +4,7 @@
 
 Changesets owns package versions and `CHANGELOG.md` updates. Changelog entries include originating GitHub pull-request, commit, and author links. A push to `main` runs [`publish.yml`](../../.github/workflows/publish.yml), which creates or updates a release pull request, publishes an approved release, or exits without release work.
 
-The workflow is implemented and its no-release path has recorded verification. The first Changesets-managed publication remains an [active verification task](plans/changesets-release-automation.md). [Initial release evidence](records/initial-release.md) records the completed `0.1.0` OIDC publication; check registry state during each release rather than relying on that historical result.
+The workflow and release-PR generation are implemented. The first complete Changesets-managed publication remains pending in the [release plan](plans/oauth-tickets.md). [Initial release evidence](records/initial-release.md) records the completed `0.1.0` OIDC publication; check registry state during each release rather than relying on that historical result.
 
 ## Preconditions
 
@@ -30,11 +30,24 @@ Follow the repository policy in [`.changeset/README.md`](../../.changeset/README
 3. Commit the generated `.changeset/*.md` file with the implementation pull request.
 4. A changeset is not required for documentation, tests, CI configuration, or an internal refactor that does not change published behavior. Use `vp run changeset --empty` when an explicit no-release record is useful.
 
+## Hosted OAuth Smoke
+
+This pre-publication check requires operator account access and explicit login. Run once in an isolated local Pi agent directory selected by `PI_CODING_AGENT_DIR`, with `EXA_API_KEY` unset. Install and run the intended package in that same environment, using the actual `/exa` command and Pi tools. Login requires explicit operator action; scripted external checks also require `PI_EXA_WEB_LIVE_TEST=1`. Use a different empty agent directory for the registry-installed anonymous smoke below.
+
+1. Run `/exa login`; confirm callback completion and authenticated initialization. Record token/refresh-token presence, never values.
+2. Select `authenticated-first` and run one search. Verify successful text and `oauth` details.
+3. Restart Pi with the same directory. Exercise real refresh using the issued refresh token, then run one fetch. A documented test-only local expiry override may trigger refresh without waiting for natural expiry. If no refresh token is issued, review the refresh-support claim before release; do not mark refresh verified.
+4. Check local status/logout and clean up credentials. Verify local state transitions and API-key preservation in the implementation regression suite; they need no extra Hosted requests.
+
+Allow at most four OAuth tool sends including retries; normally two suffice. Stop on unexpected behavior. No deliberate Hosted 401/429, exhausted credits, or natural-expiry wait is required. Use the post-publication anonymous search/fetch smoke below once; do not duplicate it here.
+
+Record date, SDK version, login outcome, restart/refresh result, and effective routes. Do not record tokens, codes, authorization URLs, API keys, queries, fetched URLs, result text, or network dumps. Account access being unavailable leaves this release condition incomplete.
+
 ## Review and Publish a Release
 
 1. After changesets reach `main`, the `select-mode` job chooses the release mode.
 2. When versioning is required, the `version` job uses `changesets/action/version` to create or update `chore(release): version package`. This job can write repository contents and pull requests but has no OIDC permission.
-3. Review the release pull request's package version, consumed changesets, and GitHub-linked `CHANGELOG.md` entries, then run or approve its required CI checks. For `0.2.0`, complete T12, including PR6 merge, and T13's Hosted OAuth smoke first. Then merge the release PR. T12 alone does not establish release readiness; T14 owns release execution and post-publication verification. The [ticket tracker](plans/oauth-tickets.md) records these gates.
+3. Review the release pull request's package version, consumed changesets, and GitHub-linked `CHANGELOG.md` entries, then run or approve its required CI checks. For `0.2.0`, require the completed local/CI/package gate and the Hosted OAuth smoke below before merging the release PR. The [release plan](plans/oauth-tickets.md) records these gates; passing local tests alone does not establish release readiness.
 4. The resulting `main` push selects publish mode. The read-only `verify` job runs `vp run check`, `vp run test`, and `vp pm pack -- --dry-run --json` before any deployment approval.
 5. Inspect the completed verification output. After explicit authorization, approve the waiting `npm-production` deployment.
 6. Only the approved `publish` job has `id-token: write`. It runs `vp run release`, which uses Changesets and pnpm to publish through npm Trusted Publisher without a token. The package's `prepublishOnly` script repeats check and test during publication.
