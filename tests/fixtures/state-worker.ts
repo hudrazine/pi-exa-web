@@ -36,6 +36,7 @@ async function main() {
       });
     } else if (mode === "no-sqlite") {
       const client = createExaMcpClient();
+      if ((await client.getStatus()).oauth !== "unconfigured") throw new Error("Wrong status");
       await client.setStrategy("authenticated-first");
       if ((await client.getStrategy()) !== "authenticated-first") throw new Error("Wrong strategy");
       await client.close();

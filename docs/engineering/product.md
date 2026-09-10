@@ -16,12 +16,12 @@ The [tool contract](design/web-tools.md) owns caller-visible behavior and the sa
 
 ## Implemented Scope
 
-The web tools remain Exa-only with one URL per fetch and an optional `EXA_API_KEY`. Merged, unreleased PR1/PR2 provide safe errors, separate route connections, JSON storage and SQLite OAuth coordination. Merged PR3 adds saved strategies through `/exa strategy`, bounded anonymous probes/cooldown, and one 402 credit fallback. Quota state stays process-local. Local PR4 adds saved OAuth selection, refresh, one same-route 401 recovery and private local logout. Interactive login and management commands remain unimplemented. Installation and end-user usage belong in the [README](../../README.md).
+The web tools remain Exa-only with one URL per fetch and an optional `EXA_API_KEY`. Merged, unreleased PR1/PR2 provide safe errors, separate route connections, JSON storage and SQLite OAuth coordination. Merged PR3 adds saved strategies through `/exa strategy`, bounded anonymous probes/cooldown, and one 402 credit fallback. Quota state stays process-local. Merged PR4 adds saved OAuth selection, refresh, one same-route 401 recovery and private local logout. Local PR5 adds explicit login through local TUI, revision-protected commit, local status and logout commands. Installation and end-user usage belong in the [README](../../README.md).
 
 Advanced Exa search, Agent features, direct Exa API integration, alternate providers, custom endpoints/proxies, caching, telemetry, client-side rate scheduling, and configurable retry policies are outside this scope.
 
 ## Development Direction
 
-OAuth login and selectable access strategies are accepted for `0.2.0`, together with the OAuth state lifecycle, SQLite coordination and higher Node.js minimum. PR1 supplies the connection foundation; PR2 supplies private storage and the new runtime floor. PR3 implements selectable routing for anonymous/API-key access. PR4 integrates saved OAuth and refresh; PR5 retains interactive login and management. The [OAuth plan](plans/oauth-routing.md) defines delivery and links to the contracts.
+OAuth login and selectable access strategies target `0.2.0`, together with the OAuth state lifecycle, SQLite coordination and higher Node.js minimum. PR1–PR4 are merged; PR5 implements interactive login and management locally. PR5 CI, Hosted OAuth smoke and release verification remain pending. The [OAuth plan](plans/oauth-routing.md) defines delivery and links to the contracts.
 
 Changesets release automation is implemented. Its first complete managed publication remains an independent [verification task](plans/changesets-release-automation.md).

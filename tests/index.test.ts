@@ -391,7 +391,7 @@ describe("pi-exa-web extension contract", () => {
     expect(collapsedLongError).not.toContain(longError);
 
     const rateLimit =
-      "Exa anonymous MCP rate limit reached. Set EXA_API_KEY from https://dashboard.exa.ai/api-keys or retry later.";
+      "Exa anonymous MCP rate limit reached. Run /exa login, set EXA_API_KEY from https://dashboard.exa.ai/api-keys or retry later.";
     expect(
       renderResult(
         search,

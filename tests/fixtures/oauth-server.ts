@@ -15,6 +15,7 @@ export interface OAuthReply {
   result?: unknown;
   disconnect?: boolean;
   truncate?: boolean;
+  sse?: { messages: unknown[]; onClose?: () => void };
 }
 export const ok = {
   content: [
@@ -77,6 +78,18 @@ export async function oauthServer(
       }
       if (reply?.disconnect) {
         response.destroy();
+        return;
+      }
+      if (reply?.sse) {
+        response.writeHead(200, {
+          "content-type": "text/event-stream; charset=utf-8",
+          ...reply.headers,
+        });
+        if (reply.sse.onClose) response.on("close", reply.sse.onClose);
+        response.flushHeaders();
+        for (const message of reply.sse.messages)
+          response.write(`event: message\ndata: ${JSON.stringify(message)}\n\n`);
+        // Keep the stream open until the client closes it; an MCP response does not require EOF.
         return;
       }
       if (reply?.status !== undefined) {

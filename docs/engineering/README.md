@@ -10,10 +10,11 @@
 | Safe errors and route-specific connections | PR1 merged in [#15](https://github.com/hudrazine/pi-exa-web/pull/15); unreleased | [Errors and secret handling](design/web-tools.md#errors-and-secret-handling) |
 | Selectable anonymous/API-key routing | PR3 merged in [#17](https://github.com/hudrazine/pi-exa-web/pull/17); unreleased | [Delivery plan](plans/oauth-routing.md) |
 | SQLite OAuth coordination, JSON storage and higher Node.js minimum | PR2 merged in [#16](https://github.com/hudrazine/pi-exa-web/pull/16); all four CI jobs passed | [Decision and rationale](decisions/sqlite-state-locking.md), [lock contract](design/oauth-state-locking.md) |
-| Saved OAuth selection, refresh and private logout | PR4 implemented locally; OS CI pending | [OAuth state design](proposals/oauth-state.md), [verification](plans/oauth-verification.md) |
+| Saved OAuth selection, refresh and private logout | PR4 merged in [#19](https://github.com/hudrazine/pi-exa-web/pull/19); all four CI jobs passed | [OAuth state design](proposals/oauth-state.md), [verification](plans/oauth-verification.md) |
+| Interactive login and management commands | PR5 implemented locally; PR CI and Hosted smoke pending | [Login and state](proposals/oauth-state.md#explicit-login), [verification](plans/oauth-verification.md#pr5-verification) |
 | Changesets release automation | Implemented; first managed publication unverified | [Remaining release verification](plans/changesets-release-automation.md) |
 
-“Accepted” identifies a selected design and its constraints, not implemented or verified behavior. PR3 adds `/exa strategy`, bounded anonymous probes/cooldown, and 402 fallback. PR4 implements saved OAuth selection, refresh and private logout. Interactive login and login/logout/status UI remain unimplemented; see the [ticket tracker](plans/oauth-tickets.md).
+“Accepted” identifies a selected design and its constraints, not implemented or verified behavior. PR3 adds `/exa strategy`, bounded anonymous probes/cooldown, and 402 fallback. PR4 integrates saved OAuth selection and refresh. PR5 adds staged login and `/exa login/logout/status` through transient command UI. Hosted compatibility and release verification remain pending; see the [ticket tracker](plans/oauth-tickets.md).
 
 ## Understand and Maintain the Package
 
