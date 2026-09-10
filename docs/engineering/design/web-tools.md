@@ -1,6 +1,6 @@
 # Pi Tool Contract
 
-The current extension registers `web_search` and `web_fetch`. They expose Exa search and single-page text retrieval through Pi; MCP types and internal modules are not public APIs. Authentication is defined by the [anonymous-first policy](anonymous-first.md).
+The extension registers `web_search` and `web_fetch`. They expose Exa search and single-page text retrieval through Pi; MCP types and internal modules are not public APIs. The [authentication and routing contract](anonymous-first.md) defines credential selection and retry behavior.
 
 ## Inputs and Results
 

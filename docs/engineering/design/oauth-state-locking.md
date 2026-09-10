@@ -1,4 +1,4 @@
-# SQLite State Lock Implementation Contract
+# SQLite Lock Contract
 
 This document defines the implementation contract for the [accepted SQLite coordination decision](../decisions/sqlite-state-locking.md). The [OAuth state contract](oauth-state.md#transactions-and-revisions) owns revisioned JSON transactions, and the [verification specification](../quality.md#lock-and-state-cases) owns acceptance checks. The private lock in `src/oauth-lock.ts` protects login commits, refresh and logout. Login's browser wait, settings operations and status reads do not acquire it.
 
@@ -8,7 +8,7 @@ Keep `oauth.json` authoritative. Use persistent `oauth.lock.sqlite` in the canon
 
 1. Open a transaction-owned `DatabaseSync` connection to the canonical OAuth coordination DB. Use separate connections for concurrent operations even in the same process; do not add a local mutex. Keep normal rollback-journal mode; do not enable WAL, shared cache, exclusive connection locking, `ATTACH`, or journal disabling. Retain the connection until cleanup and do not share it between transactions.
 2. Set `PRAGMA busy_timeout=0` and attempt `BEGIN IMMEDIATE`. The [Node binding][sqlite-binding] exposes `ERR_SQLITE_ERROR` with numeric `errcode`. Retry only primary SQLite BUSY code 5, including extended codes, using an abortable 50 ms delay shortened to the remaining budget. `SQLITE_LOCKED`, unavailable-module, permission, I/O, and corruption errors fail as storage errors; do not use message matching or fall back to unlocked access/another credential.
-3. Apply the design's monotonic 10-second budget from the start of SQLite acquisition, including connection setup and polling. Check abort/deadline after synchronous calls and each await, before entering the protected operation. A timed-out or cancelled waiter cannot enter later. Zero busy timeout avoids SQLite sleeping on contention, but synchronous filesystem I/O is not interruptible and can exceed the budget.
+3. Apply a monotonic 10-second budget from the start of SQLite acquisition, including connection setup and polling. Check abort/deadline after synchronous calls and each await, before entering the protected operation. A timed-out or cancelled waiter cannot enter later. Zero busy timeout avoids SQLite sleeping on contention, but synchronous filesystem I/O is not interruptible and can exceed the budget.
 4. Reread JSON under the acquired transaction and retain ownership through refresh, revision validation, write, and rename. The acquisition deadline is not a lease: a paused owner can make contenders time out. FIFO fairness is not promised.
 5. After protected work settles or stops, roll back the coordination transaction if acquired, then close the connection even if rollback fails. Pre-acquisition failures still close the connection. Report cleanup failures safely; cleanup cannot undo a committed JSON revision or a remotely rotated token.
 

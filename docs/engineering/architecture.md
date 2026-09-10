@@ -1,12 +1,12 @@
 # Architecture
 
-`pi-exa-web` is a source-loaded Pi extension. A private intent-level client separates Pi tools and management UI from MCP connections, authentication policy and persistent state. The [product scope](product.md) defines its boundaries; the [release plan](plans/oauth-tickets.md) owns release status.
+`pi-exa-web` is a source-loaded Pi extension. A private client exposes search/fetch and management operations, separating Pi integration from MCP connections, authentication policy and persistent state. The [product requirements](product.md) define its scope; this document owns component boundaries, request flow and connection lifetime.
 
 ## Responsibilities
 
 | Component | Responsibility | Source |
 | --- | --- | --- |
-| Extension entry | Read and trim the startup API key; register tools, commands and shutdown | [index.ts](../../src/index.ts) |
+| Extension entry | Pass the startup API key to the client; register tools, commands and shutdown | [index.ts](../../src/index.ts) |
 | Pi tools | Define input schemas, map successful details and render results | [register-tools.ts](../../src/register-tools.ts) |
 | Management UI | Validate arguments, complete fixed candidates, gate login mode and own transient UI/browser launch | [management-command.ts](../../src/management-command.ts) |
 | MCP client | Map search/fetch intents, snapshot settings, resolve authentication, manage route connections and HTTP evidence | [exa-mcp-client.ts](../../src/exa-mcp-client.ts) |
@@ -46,4 +46,4 @@ Before using a cached OAuth connection, the client reads the latest revision. A 
 
 [package.json](../../package.json) is authoritative for runtimes, dependencies and published files. Node `>=24.15.0` supports the [SQLite decision](decisions/sqlite-state-locking.md). The runtime MCP dependency is exact-pinned to `@modelcontextprotocol/client@2.0.0`; OAuth and lifecycle integration must be revalidated on upgrades. Pi supplies coding-agent, pi-tui and TypeBox peers. The published artifact contains required TypeScript source, package metadata, README and license, with no generated distribution.
 
-One intent-level client keeps vendor protocol concerns out of Pi integration without a generic provider interface, adapter framework or dependency-injection container. Private construction seams support deterministic tests. Runtime `listTools()` validation is omitted: missing upstream tools surface as safe MCP failures, and bounded release smoke detects drift without adding first-call discovery latency. Inputs use the common supported subset and omit vendor defaults because reviewed Hosted documentation and Exa source differed on optional inputs/defaults.
+One client with search/fetch operations keeps vendor protocol concerns out of Pi integration without a generic provider framework. Private construction seams support deterministic tests. There is no runtime `listTools()` discovery: missing upstream tools surface as safe MCP failures, avoiding first-call discovery latency. Hosted smoke is the separate compatibility check. Inputs use the common supported subset and omit vendor defaults because Hosted documentation and Exa source do not provide a single stable contract for optional inputs and defaults.
