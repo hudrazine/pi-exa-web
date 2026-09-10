@@ -1,12 +1,12 @@
 # v0.2.0 OAuth and Routing Implementation Plan
 
-**Status:** PR1–PR4 merged; PR5 interactive management implemented locally, PR CI and Hosted smoke pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
+**Status:** PR1–PR5 merged with CI verified; PR6 documentation/package work verified locally and in review, PR CI pending; Hosted smoke and release verification pending **Target:** `@hudrazine/pi-exa-web@0.2.0`
 
-This plan defines delivery order and completion for the OAuth feature accepted on 2026-09-09. The accepted [routing design](../proposals/oauth-routing.md) and [state design](../proposals/oauth-state.md) define its behavior; the [verification specification](oauth-verification.md) owns acceptance checks. Acceptance includes both strategies and the OAuth lifecycle, alongside the previously accepted [SQLite coordination decision](../decisions/sqlite-state-locking.md) and its lock contract. Full feature implementation and verification remain pending.
+This plan defines delivery order and completion for the OAuth feature accepted on 2026-09-09. The accepted [routing design](../proposals/oauth-routing.md) and [state design](../proposals/oauth-state.md) define its behavior; the [verification specification](oauth-verification.md) owns acceptance checks. Both strategies, the OAuth lifecycle and the [SQLite coordination contract](../decisions/sqlite-state-locking.md) are implemented. Documentation/package preparation, Hosted compatibility and release verification have separate completion conditions below.
 
 ## Scope and Dependencies
 
-The [current architecture](../architecture.md) includes unreleased PR1–PR4 foundations, routing, OAuth refresh and private logout. PR5 adds staged login and management commands, with no credential migration. Existing tool, renderer, rate-limit, concurrency, and lifecycle tests provide the regression baseline.
+The [current architecture](../architecture.md) includes merged, unreleased PR1–PR5 foundations, routing, OAuth refresh, staged login and management commands, with no credential migration. Existing tool, renderer, rate-limit, concurrency, and lifecycle tests provide the regression baseline.
 
 The [SQLite coordination decision](../decisions/sqlite-state-locking.md) is accepted, including the target Node.js minimum; [package.json](../../../package.json) defines the implemented runtime requirement.
 
@@ -38,7 +38,7 @@ The following stages implement the accepted design. Each stage uses the [verific
 - [x] Raise `engines.node` to `>=24.15.0` and implement OAuth exclusion using separate SQLite connections without a local mutex, and revisioned OAuth JSON transactions. Implement settings as validated last-write-wins JSON replacement without a revision or lock. PR2 merged after all four CI jobs passed.
 - [x] Implement per-call settings snapshots and `/exa strategy` display/replacement.
 - [x] Implement OAuth revision observation, non-interactive refresh including 401 recovery, and private local logout in PR4; four-job CI passed and PR #19 merged as `b21738f`.
-- [x] Implement staged login in PR5; local verification and PR CI are tracked separately.
+- [x] Implement staged login in PR5; [final four-job CI passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34440460305) for `db30761`, and PR #20 merged as `cc84794`.
 
 ### 4. Pi Integration
 
@@ -49,14 +49,16 @@ The following stages implement the accepted design. Each stage uses the [verific
 
 ### 5. Release Preparation
 
-- [ ] Pass the [local verification and Hosted OAuth smoke](oauth-verification.md).
-- [ ] Document commands, state protection/recovery, local logout, retry changes, initialization-time API-key headers, and SQLite's runtime constraints including the raised Node.js minimum in README.
-- [ ] Update product scope, architecture, tool/authentication contracts, and quality guidance after implementation verification. Require an isolated agent directory for anonymous release smoke tests so saved OAuth credentials cannot affect them.
-- [x] Add a minor Changeset targeting `0.2.0` in PR2; PR6 reviews it without duplication, and the release PR owns version/changelog updates.
-- [ ] Follow the [release procedure](../releases.md). If this is the first Changesets-managed publication, also complete the independent [automation plan](changesets-release-automation.md).
+- [x] Complete PR6's local check/test, real Pi loader, package dry run and Changesets status checks (T12); [local evidence](oauth-verification.md#pr6-verification).
+- [ ] Pass all four CI jobs on PR6's final commit (T12); earlier PR results do not substitute for this run.
+- [x] Document commands, state protection/recovery, local logout, retry changes, initialization-time API-key headers, and SQLite's runtime constraints including the raised Node.js minimum in README (T12).
+- [x] Align product scope, architecture, tool/authentication contracts, quality guidance and SQLite implementation status with merged implementation evidence. Require an isolated agent directory for anonymous release smoke so saved OAuth cannot affect it (T12).
+- [x] Review the existing minor Changeset targeting `0.2.0` without duplication (T12); the release PR owns version/changelog updates.
+- [ ] Complete the [Hosted OAuth smoke](oauth-verification.md#hosted-oauth-release-smoke), including actual token issuance and restart/refresh (T13).
+- [ ] Follow the [release procedure](../releases.md), including registry-artifact and anonymous post-publication smoke checks. Also complete the first managed publication's [automation verification](changesets-release-automation.md) (T14).
 
 ## Completion
 
-Release readiness requires the SQLite lock contract, both strategies, and OAuth working through the existing Pi tools, with all [local, runtime, package, and Hosted checks](oauth-verification.md) complete. Source review alone does not establish implementation or deployment compatibility.
+T12 completes documentation and local/runtime/package verification after PR6 merges with required CI passing. It does not establish release readiness: T13 must also verify Hosted login and refresh. T14 then owns the separately authorized release and post-publication verification through [release PR #18](https://github.com/hudrazine/pi-exa-web/pull/18). Source review and local fixtures do not establish Hosted deployment compatibility.
 
 Update current specifications and user guidance only with implemented, verified behavior. Record useful release evidence separately and update the SQLite decision's implementation status.

@@ -1,8 +1,8 @@
 # SQLite State Lock Implementation Contract
 
-**Status:** Implemented and merged in PR2 for `0.2.0`; all four OS/runtime CI jobs passed ([evidence](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016)); PR4 refresh/logout integration implemented locally; new OS CI pending
+**Status:** Implemented and merged in PR2 for `0.2.0`; PR4 refresh/logout and PR5 login integration merged with all four OS/runtime CI jobs verified ([evidence](../plans/oauth-verification.md#lock-and-state-cases)); unreleased
 
-This document defines the implementation contract for the [accepted SQLite coordination decision](../decisions/sqlite-state-locking.md). The [OAuth state proposal](../proposals/oauth-state.md#transactions-and-revisions) owns revisioned JSON transactions, and the [verification specification](../plans/oauth-verification.md#lock-and-state-cases) owns acceptance checks. The checkout implements the private foundation in `src/oauth-lock.ts`; it is unreleased and used by PR4 refresh and private logout. Settings and strategy commands do not acquire it.
+This document defines the implementation contract for the [accepted SQLite coordination decision](../decisions/sqlite-state-locking.md). The [OAuth state proposal](../proposals/oauth-state.md#transactions-and-revisions) owns revisioned JSON transactions, and the [verification specification](../plans/oauth-verification.md#lock-and-state-cases) owns acceptance checks. The private lock in `src/oauth-lock.ts` protects login commits, refresh and logout. Login's browser wait, settings operations and status reads do not acquire it.
 
 ## Acquisition and Cleanup
 

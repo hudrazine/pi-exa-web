@@ -1,6 +1,6 @@
 # Architecture
 
-`pi-exa-web` is a source-loaded Pi extension with separate lazy MCP connections for anonymous, OAuth and API-key access. Pi-facing registration and rendering are separated from MCP lifecycle and authentication policy. This document describes merged PR1–PR4 and local PR5 changes over `0.1.0`, including interactive login and management. [Hosted verification and release work](plans/oauth-routing.md) remain pending.
+`pi-exa-web` is a source-loaded Pi extension with separate lazy MCP connections for anonymous, OAuth and API-key access. Pi-facing registration and rendering are separated from MCP lifecycle and authentication policy. This document describes merged, unreleased PR1–PR5 changes over `0.1.0`, including interactive login and management. [Hosted verification and release work](plans/oauth-routing.md) remain pending.
 
 ## Responsibilities and Call Flow
 

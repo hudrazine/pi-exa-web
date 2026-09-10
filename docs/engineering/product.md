@@ -16,12 +16,12 @@ The [tool contract](design/web-tools.md) owns caller-visible behavior and the sa
 
 ## Implemented Scope
 
-The web tools remain Exa-only with one URL per fetch and an optional `EXA_API_KEY`. Merged, unreleased PR1/PR2 provide safe errors, separate route connections, JSON storage and SQLite OAuth coordination. Merged PR3 adds saved strategies through `/exa strategy`, bounded anonymous probes/cooldown, and one 402 credit fallback. Quota state stays process-local. Merged PR4 adds saved OAuth selection, refresh, one same-route 401 recovery and private local logout. Local PR5 adds explicit login through local TUI, revision-protected commit, local status and logout commands. Installation and end-user usage belong in the [README](../../README.md).
+The web tools remain Exa-only with one URL per fetch. Merged, unreleased changes add separate anonymous/OAuth/API-key connections, saved routing strategies, bounded anonymous probes/cooldown, one credit-error fallback, and safe failure messages. OAuth supports local-TUI login with validation before revision-protected storage, non-interactive refresh, one same-route 401 recovery, local status and logout. JSON replacement and SQLite exclusion coordinate OAuth state; quota state stays process-local. Installation and end-user usage belong in the [README](../../README.md).
 
 Advanced Exa search, Agent features, direct Exa API integration, alternate providers, custom endpoints/proxies, caching, telemetry, client-side rate scheduling, and configurable retry policies are outside this scope.
 
 ## Development Direction
 
-OAuth login and selectable access strategies target `0.2.0`, together with the OAuth state lifecycle, SQLite coordination and higher Node.js minimum. PR1–PR4 are merged; PR5 implements interactive login and management in [draft PR #20](https://github.com/hudrazine/pi-exa-web/pull/20) and passed four-job CI. PR5 merge, Hosted OAuth smoke and release verification remain pending. The [OAuth plan](plans/oauth-routing.md) defines delivery and links to the contracts.
+OAuth login and selectable access strategies target `0.2.0`, together with SQLite coordination and the higher Node.js minimum. PR1–PR5 are merged with CI verified. PR6 prepares documentation and package evidence; Hosted OAuth smoke and release verification remain pending. The [OAuth plan](plans/oauth-routing.md) defines delivery and links to the contracts.
 
 Changesets release automation is implemented. Its first complete managed publication remains an independent [verification task](plans/changesets-release-automation.md).

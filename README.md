@@ -2,7 +2,9 @@
 
 Web search and page fetching for [Pi](https://pi.dev), powered by [Exa](https://exa.ai/).
 
-`@hudrazine/pi-exa-web` adds two Pi-native tools backed by Exa Hosted MCP. It works without credentials. This checkout also supports OAuth login and `EXA_API_KEY` for authenticated access in the next release.
+`@hudrazine/pi-exa-web` adds two Pi-native tools backed by Exa Hosted MCP. It works without credentials and supports authenticated access through OAuth login or `EXA_API_KEY`.
+
+This README describes the implemented, unreleased `0.2.0` behavior. The npm installation command installs the published version; the checkout's version remains `0.1.0` until the release PR updates it. OAuth login and refresh have passed local-service tests and supported-platform CI; Hosted smoke checks remain pending before release.
 
 ## Installation
 
@@ -12,7 +14,7 @@ Install the package through Pi:
 pi install npm:@hudrazine/pi-exa-web
 ```
 
-The next release requires Node.js 24.15.0 or later. The version in this checkout remains `0.1.0` until the release PR updates it.
+Version `0.2.0` requires Node.js 24.15.0 or later.
 
 ## Usage
 
@@ -47,7 +49,7 @@ When an optional limit is omitted, the package leaves the value unset so Exa can
 
 ## Authentication and rate limits
 
-The default strategy starts with anonymous access. Credentials are not required for normal installation or initial use. These commands are implemented in this checkout for the next release:
+The default strategy starts with anonymous access. Credentials are not required for normal installation or initial use. Version `0.2.0` provides these commands:
 
 ```text
 /exa login
@@ -57,6 +59,8 @@ The default strategy starts with anonymous access. Credentials are not required 
 /exa strategy anonymous-first
 /exa strategy authenticated-first
 ```
+
+In interactive Pi, `/exa ` offers subcommand completions with short descriptions. After `/exa strategy `, completion offers `anonymous-first` and `authenticated-first`.
 
 Run `/exa login` in a local interactive Pi terminal. Pi displays a temporary authorization URL and attempts to open your browser; you can open the URL manually if that fails. Complete authorization within five minutes, or use Pi's cancel key to stop. Login uses a loopback callback on `127.0.0.1` and saves credentials only after checking the new connection. Failed re-login preserves existing credentials. A concurrent login, refresh or logout that changes saved credentials causes a conflict; start login again.
 
@@ -98,7 +102,7 @@ The key is read and trimmed once when the extension starts. Anonymous, OAuth and
 
 Web tools read the saved strategy at each call boundary, and `/exa strategy` saves changes. Unreadable or invalid settings stop the call before network access and are not overwritten by the command. Saved OAuth credentials authenticate ordinary calls and refresh without interaction. Terminal refresh rejection marks them as requiring login. Refresh and local logout share a SQLite transaction through JSON replacement; a failed save stops the call without trying another route. Interactive login keeps new credentials in memory through authorization and connection validation, then compares the starting revision before saving. Browser waiting holds no SQLite lock. The OAuth flow is verified with local services; Hosted login and refresh smoke checks remain pending before release.
 
-State belongs in the `exa-web` child of Pi's agent directory, including its override. `settings.json` holds the strategy, `oauth.json` holds revisioned credentials, and `oauth.lock.sqlite` coordinates OAuth updates between processes. API keys, authorization URLs/codes, state and PKCE verifiers are never saved. Settings and status do not require SQLite; status creates no files. OAuth transactions load Node's release-candidate `node:sqlite` lazily and fail safely if it is disabled.
+State belongs in the `exa-web` child of Pi's agent directory, including the `PI_CODING_AGENT_DIR` override. `settings.json` holds the strategy, `oauth.json` holds revisioned credentials, and `oauth.lock.sqlite` coordinates OAuth updates between processes. API keys, authorization URLs/codes, state and PKCE verifiers are never saved. Settings and status do not require SQLite; status creates no files. OAuth transactions lazily load `node:sqlite`, which is a release-candidate API at the minimum Node version, and fail safely if it is disabled.
 
 Storage supports local filesystems only. POSIX state directories use `0700` and secret/temporary files use `0600`; insufficient existing protection prevents saving. Windows uses Pi's inherited ACLs, not POSIX-equivalent modes. Failed replacements preserve committed files. Do not delete or replace coordination databases or journals to clear a lock. The ten-second acquisition budget cannot interrupt synchronous filesystem I/O. Storage does not claim power-loss durability.
 

@@ -3,7 +3,7 @@ import {
   type ExtensionAPI,
   type ExtensionCommandContext,
 } from "@earendil-works/pi-coding-agent";
-import { Text } from "@earendil-works/pi-tui";
+import { Text, type AutocompleteItem } from "@earendil-works/pi-tui";
 import childProcess from "node:child_process";
 import { ExaError, safeError } from "./errors.ts";
 import type { ExaMcpClient, ExaStatus } from "./exa-mcp-client.ts";
@@ -17,10 +17,41 @@ const oauthLabels: Record<ExaStatus["oauth"], string> = {
   "login-required": "login required",
 };
 
+function getArgumentCompletions(prefix: string): AutocompleteItem[] | null {
+  const parts = prefix.trimStart().split(/\s+/u);
+  let items: AutocompleteItem[];
+  if (parts.length === 1) {
+    items = [
+      { value: "login", label: "login", description: "Log in with OAuth in interactive Pi" },
+      { value: "logout", label: "logout", description: "Remove local OAuth credentials" },
+      { value: "status", label: "status", description: "Show local authentication status" },
+      { value: "strategy", label: "strategy", description: "Show or change routing strategy" },
+    ];
+  } else if (parts.length === 2 && parts[0] === "strategy") {
+    items = [
+      {
+        value: "strategy anonymous-first",
+        label: "anonymous-first",
+        description: "Prefer anonymous access",
+      },
+      {
+        value: "strategy authenticated-first",
+        label: "authenticated-first",
+        description: "Prefer available authentication",
+      },
+    ];
+  } else {
+    return null;
+  }
+  const filtered = items.filter((item) => item.label.startsWith(parts.at(-1)!));
+  return filtered.length > 0 ? filtered : null;
+}
+
 export function registerExaCommand(pi: ExtensionAPI, client: ExaMcpClient): void {
   let loginScreenActive = false;
   pi.registerCommand("exa", {
     description: "Manage Exa login, local status and routing strategy",
+    getArgumentCompletions,
     async handler(args, ctx) {
       const parts = args.trim().split(/\s+/u);
       const command = parts[0];

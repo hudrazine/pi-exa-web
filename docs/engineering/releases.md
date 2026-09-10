@@ -12,7 +12,7 @@ The workflow is implemented and its no-release path has recorded verification. T
 - Use the Node.js and pnpm versions declared in `package.json`.
 - Do not edit `package.json` or `CHANGELOG.md` manually for a routine release; Changesets updates them in the release pull request.
 - Obtain explicit authorization before approving `npm-production` or making another external release change.
-- Keep `EXA_API_KEY` unset for registry-package smoke tests and do not intentionally consume the anonymous quota to force a 429.
+- Use a new isolated `PI_CODING_AGENT_DIR` with `EXA_API_KEY` unset for registry-package smoke tests, as described below. Do not intentionally consume the anonymous quota to force a 429.
 - Do not add a build or generated distribution artifact. Pi loads the published TypeScript source through jiti.
 - GitHub Actions must be allowed to create pull requests before release-PR automation can operate. This repository setting is not managed by the workflow.
 
@@ -34,7 +34,7 @@ Follow the repository policy in [`.changeset/README.md`](../../.changeset/README
 
 1. After changesets reach `main`, the `select-mode` job chooses the release mode.
 2. When versioning is required, the `version` job uses `changesets/action/version` to create or update `chore(release): version package`. This job can write repository contents and pull requests but has no OIDC permission.
-3. Review the release pull request's package version, consumed changesets, and GitHub-linked `CHANGELOG.md` entries, then run or approve its required CI checks and merge it.
+3. Review the release pull request's package version, consumed changesets, and GitHub-linked `CHANGELOG.md` entries, then run or approve its required CI checks. For `0.2.0`, complete T12, including PR6 merge, and T13's Hosted OAuth smoke first. Then merge the release PR. T12 alone does not establish release readiness; T14 owns release execution and post-publication verification. The [ticket tracker](plans/oauth-tickets.md) records these gates.
 4. The resulting `main` push selects publish mode. The read-only `verify` job runs `vp run check`, `vp run test`, and `vp pm pack -- --dry-run --json` before any deployment approval.
 5. Inspect the completed verification output. After explicit authorization, approve the waiting `npm-production` deployment.
 6. Only the approved `publish` job has `id-token: write`. It runs `vp run release`, which uses Changesets and pnpm to publish through npm Trusted Publisher without a token. The package's `prepublishOnly` script repeats check and test during publication.
@@ -61,8 +61,11 @@ After a successful publication:
 1. Confirm that npm `latest` resolves to the release-PR version and that the artifact carries provenance.
 2. Compare the registry artifact with the reviewed dry-run file list and publication commit. It must contain the required TypeScript source, README, license, and package metadata, with no tests, fixtures, state, secrets, or generated distribution artifact.
 3. Confirm that the Git tag, GitHub Release, npm version, and `CHANGELOG.md` entry use the same version and release notes.
-4. Install the exact registry version in a clean Pi package directory.
-5. With `EXA_API_KEY` unset, make one bounded anonymous `web_search` call and one bounded anonymous `web_fetch` call.
+4. In a dedicated shell, set `PI_CODING_AGENT_DIR` to a newly created empty directory and unset `EXA_API_KEY` before installing or starting Pi. For example, in Bash, use `export PI_CODING_AGENT_DIR="$(mktemp -d)"` and `unset EXA_API_KEY`. Keep that environment for all following steps. Do not copy the normal agent directory, saved `exa-web` state or package settings into it; configure only the model access needed for the smoke.
+5. In that same environment, install the exact registry version with `pi install npm:@hudrazine/pi-exa-web@<reviewed-version>`, replacing the version placeholder. Start Pi from a clean working directory without project extensions or package settings. Confirm that the registry package provides the tools, rather than a local checkout or a second installation.
+6. Make one bounded `web_search` call and one bounded `web_fetch` call. Both must succeed with `details.auth` equal to `anonymous` and no fallback. Do not log in, change strategy, reuse the Hosted OAuth smoke directory, or issue extra calls to provoke a rate limit. Stop on an unexpected route or failure and leave verification incomplete.
+
+Exit Pi before cleaning up the smoke directory, and clean up only that isolated directory. Do not delete or replace a live OAuth coordination DB or journal. The normal Pi agent directory remains outside this procedure.
 
 Do not treat a release as verified until the registry-installed package passes the smoke tests.
 

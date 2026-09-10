@@ -1,6 +1,6 @@
 # Anonymous and Authenticated Routing
 
-The checkout implements saved routing strategies, bounded anonymous probes/cooldown and credit fallback for the next release. Merged PR4 adds non-interactive OAuth selection and refresh; local PR5 adds [interactive management](../proposals/oauth-routing.md#pi-contract-and-management). The key is read once at extension initialization, trimmed, and never persisted.
+The checkout implements saved routing strategies, bounded anonymous probes/cooldown, credit fallback, non-interactive OAuth selection/refresh and [interactive management](../proposals/oauth-routing.md#pi-contract-and-management) for unreleased `0.2.0`. The key is read once at extension initialization, trimmed, and never persisted.
 
 ## Selection and Settings
 
