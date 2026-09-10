@@ -27,21 +27,13 @@ jobs:
           persist-credentials: false
 
       - name: Set up Vite+ and install dependencies
-        uses: voidzero-dev/setup-vp@v1.17.0
+        uses: voidzero-dev/setup-vp@v1.19.0
         with:
           version-file: package.json
           node-version-file: package.json
           run-install: |
             - args: ["--frozen-lockfile"]
           cache: false
-
-      - name: Expose and verify pnpm
-        shell: bash
-        run: |
-          pnpm_dir=$(dirname "$(vp env which pnpm | head -n 1)")
-          echo "$pnpm_dir" >> "$GITHUB_PATH"
-          export PATH="$pnpm_dir:$PATH"
-          pnpm --version | grep -Fx "$(node -p "require('./package.json').devEngines.packageManager.version")"
 
       - name: Select release mode
         id: changesets
@@ -63,21 +55,13 @@ jobs:
           persist-credentials: false
 
       - name: Set up Vite+ and install dependencies
-        uses: voidzero-dev/setup-vp@v1.17.0
+        uses: voidzero-dev/setup-vp@v1.19.0
         with:
           version-file: package.json
           node-version-file: package.json
           run-install: |
             - args: ["--frozen-lockfile"]
           cache: false
-
-      - name: Expose and verify pnpm
-        shell: bash
-        run: |
-          pnpm_dir=$(dirname "$(vp env which pnpm | head -n 1)")
-          echo "$pnpm_dir" >> "$GITHUB_PATH"
-          export PATH="$pnpm_dir:$PATH"
-          pnpm --version | grep -Fx "$(node -p "require('./package.json').devEngines.packageManager.version")"
 
       - name: Create or update release pull request
         uses: changesets/action/version@v2.1.1
@@ -101,7 +85,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Vite+ and install dependencies
-        uses: voidzero-dev/setup-vp@v1.17.0
+        uses: voidzero-dev/setup-vp@v1.19.0
         with:
           version-file: package.json
           node-version-file: package.json
@@ -138,7 +122,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Vite+ and install dependencies
-        uses: voidzero-dev/setup-vp@v1.17.0
+        uses: voidzero-dev/setup-vp@v1.19.0
         with:
           version-file: package.json
           node-version-file: package.json
@@ -146,14 +130,6 @@ jobs:
             - args: ["--frozen-lockfile"]
           cache: false
           registry-url: https://registry.npmjs.org
-
-      - name: Expose and verify pnpm
-        shell: bash
-        run: |
-          pnpm_dir=$(dirname "$(vp env which pnpm | head -n 1)")
-          echo "$pnpm_dir" >> "$GITHUB_PATH"
-          export PATH="$pnpm_dir:$PATH"
-          pnpm --version | grep -Fx "$(node -p "require('./package.json').devEngines.packageManager.version")"
 
       - name: Publish package and create release
         uses: changesets/action/publish@v2.1.1

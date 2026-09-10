@@ -70,9 +70,9 @@ These fixtures verify local transaction composition and rotating-token behavior;
 
 ## Runtime and Package Checks
 
-The [CI workflow](../../.github/workflows/ci.yml) runs the full check/test suite on Linux x64, macOS arm64 and Windows x64 using the declared development runtime, plus Linux x64 on Node 24.15.0. Tests assert their effective Node version, OS and CPU. Local Linux results do not substitute for another platform; require successful checks on the final PR revision.
+The [CI workflow](../../.github/workflows/ci.yml) runs `vp run check` and `vp run test` on Linux x64, macOS arm64 and Windows x64 using the declared development runtime. Tests assert their effective Node version, OS and CPU. Local Linux results do not substitute for another platform; require successful checks on the final PR revision.
 
-The minimum job selects `vp env use 24.15.0` and invokes `vp check` / `vp test` directly. `vp run` scripts resolve pnpm's `devEngines.runtime` shim and can switch back to the development runtime. Remove a local override with `vp env use --unset` after minimum-version validation.
+The supported Node minimum remains 24.15.0, but CI does not separately test that minimum.
 
 For package changes, run `vp pm pack -- --dry-run --json` and verify loading through Pi's real extension loader. The artifact must contain only LICENSE, README, package.json and required TypeScript source: no tests, fixtures, local state, secrets, server runtime dependencies or generated distribution. Use `vp run changeset status` to inspect release intent without generating versions.
 
