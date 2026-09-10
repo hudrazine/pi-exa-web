@@ -4,7 +4,7 @@ import {
   type Server,
   type ServerResponse,
 } from "node:http";
-import { once } from "node:events";
+import { getEventListeners, once } from "node:events";
 import { fork } from "node:child_process";
 import { inspect } from "node:util";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
@@ -810,22 +810,44 @@ describe("concurrent route lifecycle", () => {
     await client.close();
   });
   test("shares a failed key initialization and reconnects on the next call", async () => {
-    const fixture = await createFixture(
-      (request) =>
-        request.headers["x-api-key"] === undefined
-          ? { status: 429, headers: { "retry-after": "30" } }
-          : success,
-      { initializeFailures: 1, initializeFailureRoute: "api-key" },
-    );
+    const gate = deferred<void>();
+    const fixture = await createFixture(() => success, {
+      initializeFailures: 1,
+      initializeFailureRoute: "api-key",
+      initializeGate: gate.promise,
+    });
     const client = createExaMcpClient({ endpoint: fixture.endpoint, apiKey: sentinel });
-    const failures = await Promise.all(
-      operations.map((operation) => invoke(client, operation).catch((error: unknown) => error)),
+    await client.setStrategy("authenticated-first");
+    const combinedSignals = vi.spyOn(AbortSignal, "any");
+    const controllers = operations.map(() => new AbortController());
+    const failures = Promise.all(
+      operations.map((operation, index) =>
+        invoke(client, operation, controllers[index].signal).catch((error: unknown) => error),
+      ),
     );
-    expect(failures).toMatchObject([{ code: "server" }, { code: "server" }]);
-    expect(countRequests(fixture, "initialize")).toBe(2);
-    expect(await invoke(client, "fetch")).toEqual({ text: "ok", auth: "api-key" });
-    expect(countRequests(fixture, "initialize")).toBe(3);
-    await client.close();
+    try {
+      // Starting both calls does not guarantee that both await the same handshake.
+      // Before tool HTTP begins, each call signal has a listener only while waiting
+      // for initialization. Keep its failure pending until both waiters are attached.
+      await waitUntil(() =>
+        controllers.every(({ signal }) => {
+          const index = combinedSignals.mock.calls.findIndex(([signals]) =>
+            signals.includes(signal),
+          );
+          const result = combinedSignals.mock.results[index];
+          return result?.type === "return" && getEventListeners(result.value, "abort").length > 0;
+        }),
+      );
+      gate.resolve();
+      expect(await failures).toMatchObject([{ code: "server" }, { code: "server" }]);
+      expect(countRequests(fixture, "initialize")).toBe(1);
+      expect(await invoke(client, "fetch")).toEqual({ text: "ok", auth: "api-key" });
+      expect(countRequests(fixture, "initialize")).toBe(2);
+    } finally {
+      gate.resolve();
+      await client.close();
+      await failures;
+    }
   });
   test("deduplicates key initialization and cancels only its individual waiter", async () => {
     const gate = deferred<void>();
@@ -1138,6 +1160,9 @@ async function createFixture(
         return;
       }
       if (message?.method === "initialize") {
+        await (typeof options.initializeGate === "function"
+          ? options.initializeGate(request)
+          : options.initializeGate);
         if (options.initializeStatus !== undefined) {
           response.writeHead(options.initializeStatus).end("private initialize failure");
           return;
@@ -1151,9 +1176,6 @@ async function createFixture(
           response.writeHead(500).end("initialize failed");
           return;
         }
-        await (typeof options.initializeGate === "function"
-          ? options.initializeGate(request)
-          : options.initializeGate);
         const sessionId = options.sessionless ? undefined : `test-session-${++sessionNumber}`;
         const params = getRecord(message, "params");
         sendJson(
