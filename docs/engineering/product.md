@@ -22,6 +22,6 @@ Advanced Exa search, Agent features, direct Exa API integration, alternate provi
 
 ## Development Direction
 
-OAuth login and selectable access strategies target `0.2.0`, together with the OAuth state lifecycle, SQLite coordination and higher Node.js minimum. PR1–PR4 are merged; PR5 implements interactive login and management locally. PR5 CI, Hosted OAuth smoke and release verification remain pending. The [OAuth plan](plans/oauth-routing.md) defines delivery and links to the contracts.
+OAuth login and selectable access strategies target `0.2.0`, together with the OAuth state lifecycle, SQLite coordination and higher Node.js minimum. PR1–PR4 are merged; PR5 implements interactive login and management in [draft PR #20](https://github.com/hudrazine/pi-exa-web/pull/20) and passed four-job CI. PR5 merge, Hosted OAuth smoke and release verification remain pending. The [OAuth plan](plans/oauth-routing.md) defines delivery and links to the contracts.
 
 Changesets release automation is implemented. Its first complete managed publication remains an independent [verification task](plans/changesets-release-automation.md).

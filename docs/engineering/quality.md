@@ -1,6 +1,6 @@
 # Quality and Development
 
-Changes must preserve the [product requirements](product.md), [tool contract](design/web-tools.md), and [authentication policy](design/anonymous-first.md). Normal checks use local transports and deterministic timing; they must not depend on Hosted Exa availability or consume its quota. The [OAuth verification specification](plans/oauth-verification.md) maps PR1 connections, PR2 storage, PR3 routing/commands, PR4 non-interactive OAuth and PR5 staged login/management. PR5 CI and Hosted verification remain pending.
+Changes must preserve the [product requirements](product.md), [tool contract](design/web-tools.md), and [authentication policy](design/anonymous-first.md). Normal checks use local transports and deterministic timing; they must not depend on Hosted Exa availability or consume its quota. The [OAuth verification specification](plans/oauth-verification.md) maps PR1 connections, PR2 storage, PR3 routing/commands, PR4 non-interactive OAuth and PR5 staged login/management. PR5 passed four-job CI; Hosted verification remains pending.
 
 ## Local Workflow
 
@@ -36,7 +36,7 @@ Test expectations must follow the relevant contract, not private filenames or cl
 
 PR2 adds `tests/oauth-lock.test.ts` and `tests/state-store.test.ts` for L1–L3, revisions, complete replacement, cleanup, same/child-process settings ordering and directory isolation. `tests/state-loader.test.ts` checks real Pi/jiti loading of SQLite, storage-error rendering and SessionManager records, and the effective runtime.
 
-The [CI workflow](../../.github/workflows/ci.yml) defines development-runtime jobs on Linux x64, macOS arm64 and Windows x64, plus Node 24.15.0 on Linux. Every job runs the full check/test suite and asserts the effective test-process runtime. Local Linux results do not establish macOS/Windows success; PR2 passed [all four CI jobs](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016). New feature revisions still require their own CI results; [PR3 CI passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34330004672) for `a0b32de`, and [PR4 CI passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34374575956) for `dd6da10`. PR5's four-job CI remains pending until its PR is created.
+The [CI workflow](../../.github/workflows/ci.yml) defines development-runtime jobs on Linux x64, macOS arm64 and Windows x64, plus Node 24.15.0 on Linux. Every job runs the full check/test suite and asserts the effective test-process runtime. Local Linux results do not establish macOS/Windows success; PR2 passed [all four CI jobs](https://github.com/hudrazine/pi-exa-web/actions/runs/34322919016). New feature revisions still require their own CI results; [PR3 CI passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34330004672) for `a0b32de`, [PR4 CI passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34374575956) for `dd6da10`, and [PR5 CI passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34440152143) for `5d7e7d4` in draft PR #20.
 
 The minimum-runtime job selects `vp env use 24.15.0` and invokes `vp check` / `vp test` directly. `vp run` scripts resolve pnpm's local Node shim pinned by `devEngines.runtime`, which otherwise runs 24.19.0 even after a session override. Development jobs retain `vp run check` / `vp run test`; the test-process assertion guards both paths.
 

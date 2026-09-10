@@ -1,6 +1,6 @@
 # OAuth and Routing Verification
 
-**Status:** PR1–PR4 merged with CI verified; PR5 interactive login/management verified locally on development/minimum Node, PR CI pending; Hosted smoke pending
+**Status:** PR1–PR4 merged with CI verified; PR5 interactive login/management verified locally on development/minimum Node and in four-job CI, draft PR #20 pending merge; Hosted smoke pending
 
 This document owns local acceptance cases, runtime coverage, and the Hosted release smoke for the [implementation plan](oauth-routing.md). The accepted [routing design](../proposals/oauth-routing.md), [state design](../proposals/oauth-state.md), and [SQLite lock contract](../design/oauth-state-locking.md) supply the expectations. Design acceptance does not establish implementation or successful verification.
 
@@ -67,7 +67,7 @@ PR4 local evidence (2026-09-10): Linux x64 passed all 296 tests on Node 24.19.0 
 | Status without network, file creation or SQLite; startup key presence, expiry/login-required precedence and lifecycle rejection | `tests/management-command.test.ts`, SQLite-disabled child in `tests/state-store.test.ts` / `tests/fixtures/state-worker.ts` |
 | Authorization URL, state, verifier, codes, tokens, secrets, SDK errors and nested causes absent from notices, errors, logs and actual SessionManager records | `tests/management-command.test.ts`, `tests/oauth-login.test.ts`; PR4 OAuth renderer/boundary regressions retained |
 
-PR5 local evidence (2026-09-10): Linux x64 passed all 355 tests on Node 24.19.0 and 24.15.0, with actual test-process Node/OS/CPU assertions, the real Pi loader and child processes. Formatting, lint and types passed. Development used `vp run check` / `vp run test`; minimum validation used `vp env use 24.15.0` with built-in `vp check` / `vp test`, then removed the override. Pack dry run listed only LICENSE, package metadata, README and required TypeScript source, including the private login and command modules. PR5's four OS/runtime CI jobs have not run; local Linux success does not establish macOS/Windows success. Hosted Exa, a real browser, release PR #18, version/CHANGELOG changes and npm publication are outside this work. T7/T10 must not be marked Done before PR5 CI and merge.
+PR5 local evidence (2026-09-10): Linux x64 passed all 355 tests on Node 24.19.0 and 24.15.0, with actual test-process Node/OS/CPU assertions, the real Pi loader and child processes. Formatting, lint and types passed. Development used `vp run check` / `vp run test`; minimum validation used `vp env use 24.15.0` with built-in `vp check` / `vp test`, then removed the override. Pack dry run listed only LICENSE, package metadata, README and required TypeScript source, including the private login and command modules. [All four CI jobs passed](https://github.com/hudrazine/pi-exa-web/actions/runs/34440152143) for `5d7e7d4` in [draft PR #20](https://github.com/hudrazine/pi-exa-web/pull/20), including macOS arm64 and Windows x64. Hosted Exa, a real browser, release PR #18, version/CHANGELOG changes and npm publication are outside this work. T7/T10 remain In review until PR #20 merges with required CI passing.
 
 ## Lock and State Cases
 
